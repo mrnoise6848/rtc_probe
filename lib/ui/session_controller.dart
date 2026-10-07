@@ -79,7 +79,7 @@ class SessionController extends ChangeNotifier {
   int? get appliedBitrateCapKbps => _appliedBitrateCapKbps;
   bool get hasVideoGrant => _sessionModel?.mediaGrant == RtcMediaGrant.audioVideo;
   List<RtcFinding> get findings => _diagnostics.activeFindings;
-  List<RtcTimelinePoint> get timelinePoints => _timeline.points;
+  List<RtcTimelinePoint> get timelinePoints => _timeline.trailing(60000);
   List<RtcSessionEvent> get events => List.unmodifiable(_events);
 
   // ---- Session lifecycle -------------------------------------------------
@@ -209,11 +209,17 @@ class SessionController extends ChangeNotifier {
     session.ping();
 
     final collected = await collector.collect();
+    if (!identical(session, _session) || _phase != RtcSessionPhase.live) return;
     if (!collected.available) {
+      _snapshot = null;
+      _previousSnapshot = null;
+      _metrics = const RtcDerivedMetrics();
+      _quality = const RtcQualityReport(level: RtcQualityLevel.unknown, assessments: []);
       if (!_statsUnavailableLogged) {
         _statsUnavailableLogged = true;
         _log(RtcSessionEventKind.error, 'Stats unavailable: ${collected.error}');
       }
+      notifyListeners();
       return;
     }
     _statsUnavailableLogged = false;

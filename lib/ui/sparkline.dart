@@ -94,5 +94,6 @@ class _SparklinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SparklinePainter oldDelegate) =>
-      oldDelegate.series != series || oldDelegate.color != color;
+      oldDelegate.series != series || oldDelegate.color != color ||
+      oldDelegate.value != value || oldDelegate.windowMs != windowMs;
 }

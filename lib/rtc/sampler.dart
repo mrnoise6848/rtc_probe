@@ -8,7 +8,8 @@ typedef RtcSampleTick = Future<void> Function();
 /// a slow tick is skipped rather than queued. Cancellation is explicit and
 /// unambiguous — [stop] is idempotent and safe from any state.
 class RtcSampler {
-  RtcSampler({this.interval = const Duration(seconds: 1)});
+  RtcSampler({this.interval = const Duration(seconds: 1)})
+    : assert(interval > Duration.zero);
 
   /// Sampling period. 1 Hz keeps UI updates cheap while giving the classifier
   /// enough resolution to observe degradation within a few seconds.
@@ -35,6 +36,5 @@ class RtcSampler {
   void stop() {
     _timer?.cancel();
     _timer = null;
-    _ticking = false;
   }
 }
