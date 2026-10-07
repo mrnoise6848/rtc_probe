@@ -56,6 +56,8 @@ class LoopbackRtcSession {
   Stream<RtcConnectionState> get connectionStates => _probe.connectionStates;
   Stream<RtcIceState> get iceStates => _probe.iceStates;
 
+  RtcConnectionState get connectionState => _probe.connectionState;
+  RtcIceState get iceState => _probe.iceState;
   MediaStream? get media => _media;
   RTCDataChannel? get channel => _channel;
   DateTime? get startedAt => _startedAt;
@@ -65,11 +67,26 @@ class LoopbackRtcSession {
   /// live session. [media] may be null (permission denied → data-channel-only
   /// session; ICE/DTLS remain real).
   static Future<LoopbackRtcSession> start({MediaStream? media}) async {
-    final probe = await ProbePeer.create('probe');
-    final mirror = await ProbePeer.create('mirror');
-    final session = LoopbackRtcSession._(probe, mirror, media);
-    await session._setup();
-    return session;
+    ProbePeer? probe;
+    ProbePeer? mirror;
+    LoopbackRtcSession? session;
+    try {
+      probe = await ProbePeer.create('probe');
+      mirror = await ProbePeer.create('mirror');
+      session = LoopbackRtcSession._(probe, mirror, media);
+      await session._setup().timeout(const Duration(seconds: 20));
+      return session;
+    } catch (_) {
+      if (session != null) {
+        await session.close();
+      } else {
+        await mirror?.close();
+        await probe?.close();
+        for (final track in media?.getTracks() ?? <MediaStreamTrack>[]) { await track.stop(); }
+        await media?.dispose();
+      }
+      rethrow;
+    }
   }
 
   Future<void> _setup() async {
@@ -166,7 +183,7 @@ class LoopbackRtcSession {
       await _channel?.close();
     } catch (_) {}
     try {
-      _media?.getTracks().forEach((t) => t.stop());
+      for (final track in _media?.getTracks() ?? <MediaStreamTrack>[]) { await track.stop(); }
       await _media?.dispose();
     } catch (_) {}
     if (!_mirrorGone) await _mirror.close();

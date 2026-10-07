@@ -34,6 +34,17 @@ class SessionController extends ChangeNotifier {
   final RtcQualityClassifier _classifier = const RtcQualityClassifier();
   final RtcDiagnosticEngine _diagnostics = RtcDiagnosticEngine();
 
+  bool _disposed = false;
+  int _generation = 0;
+  Future<void>? _starting;
+  Future<void>? _stopping;
+  final Stopwatch _clock = Stopwatch();
+
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
   LoopbackRtcSession? _session;
   RtcStatsCollector? _collector;
   RtcSampler? _sampler;
@@ -85,13 +96,22 @@ class SessionController extends ChangeNotifier {
   // ---- Session lifecycle -------------------------------------------------
 
   Future<void> start() async {
-    if (isLive) return;
+    if (_disposed || isLive || _stopping != null) return;
+    final pending = _start(++_generation);
+    _starting = pending;
+    try { await pending; } finally { if (identical(_starting, pending)) _starting = null; }
+  }
+
+  bool _valid(int generation) => !_disposed && generation == _generation;
+
+  Future<void> _start(int generation) async {
     _phase = RtcSessionPhase.starting;
     _resetSessionState();
     _log(RtcSessionEventKind.sessionStarted, 'Session starting (${RtcSession.signalingMode})');
     notifyListeners();
 
     _networkPath = await _networkInfo.current();
+    if (!_valid(generation)) return;
     _log(
       RtcSessionEventKind.networkPathChanged,
       'Network path: ${_networkPath.interfaceType}'
@@ -101,6 +121,11 @@ class SessionController extends ChangeNotifier {
 
     // Contextual permission request with graceful degradation.
     final access = await const MediaAccess().acquire();
+    if (!_valid(generation)) {
+      for (final track in access.stream?.getTracks() ?? []) { await track.stop(); }
+      await access.stream?.dispose();
+      return;
+    }
     if (access.deniedKinds.isNotEmpty) {
       _log(RtcSessionEventKind.mediaDenied,
           'Media denied: ${access.deniedKinds.join(", ")} — falling back to data-channel-only session');
@@ -115,10 +140,13 @@ class SessionController extends ChangeNotifier {
     }
 
     try {
-      _session = await LoopbackRtcSession.start(media: access.stream);
-    } catch (e) {
+      final session = await LoopbackRtcSession.start(media: access.stream);
+      if (!_valid(generation)) { await session.close(); return; }
+      _session = session;
+    } catch (_) {
+      if (!_valid(generation)) return;
       _phase = RtcSessionPhase.failed;
-      _log(RtcSessionEventKind.error, 'Session failed to start: $e');
+      _log(RtcSessionEventKind.error, 'WebRTC initialization failed. Try a fresh session.');
       notifyListeners();
       return;
     }
@@ -129,6 +157,9 @@ class SessionController extends ChangeNotifier {
       mediaGrant: access.grant,
     );
 
+    _clock.start();
+    _onConnectionState(_session!.connectionState);
+    _onIceState(_session!.iceState);
     _collector = RtcStatsCollector(_session!);
     _connSub = _session!.connectionStates.listen(_onConnectionState);
     _iceSub = _session!.iceStates.listen(_onIceState);
@@ -147,9 +178,20 @@ class SessionController extends ChangeNotifier {
   }
 
   Future<void> stop() async {
+    if (_stopping != null) { await _stopping; return; }
+    final pending = _stop();
+    _stopping = pending;
+    try { await pending; } finally { _stopping = null; }
+  }
+
+  Future<void> _stop() async {
     if (_phase != RtcSessionPhase.live && _phase != RtcSessionPhase.starting) return;
+    ++_generation;
+    _phase = RtcSessionPhase.ended;
+    _clock.stop();
     _sampler?.stop();
     _sampler = null;
+    await _starting;
     await _cancelSubscriptions();
     final session = _session;
     _session = null;
@@ -162,7 +204,7 @@ class SessionController extends ChangeNotifier {
 
     _summary = _aggregates.finish(
       startedAt: _sessionModel?.startedAt ?? DateTime.now(),
-      durationMs: _sessionModel?.endedAt?.difference(_sessionModel!.startedAt).inMilliseconds ?? 0,
+      durationMs: _clock.elapsedMilliseconds,
       findingsCount: _totalFindingsRaised,
     );
     _phase = RtcSessionPhase.ended;
@@ -180,6 +222,8 @@ class SessionController extends ChangeNotifier {
   }
 
   void _resetSessionState() {
+    _clock.reset();
+    _sessionModel = null;
     _timeline.clear();
     _aggregates = RtcSummaryAccumulator();
     _diagnostics.reset();
@@ -224,8 +268,7 @@ class SessionController extends ChangeNotifier {
     }
     _statsUnavailableLogged = false;
 
-    final elapsed = DateTime.now().millisecondsSinceEpoch -
-        (_sessionModel?.startedAt.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch);
+    final elapsed = _clock.elapsedMilliseconds;
 
     final snapshot = _normalizer.normalize(
       reports: collected.reports!,
@@ -355,30 +398,15 @@ class SessionController extends ChangeNotifier {
     await start();
   }
 
-  /// App lifecycle: stop sampling while invisible, resume when visible again.
-  /// The session itself stays up — the OS suspends the process anyway.
+  /// Background ends the session, releasing native capture and connections.
   void handleAppLifecycle(bool visible) {
-    if (visible) {
-      if (_phase == RtcSessionPhase.live && _sampler?.isRunning != true) {
-        _sampler?.start(_tick);
-        _networkInfo.current().then((path) {
-          if (path.interfaceType != _networkPath.interfaceType) {
-            _networkPath = path;
-            _log(RtcSessionEventKind.networkPathChanged, 'Network path changed: ${path.interfaceType}');
-            notifyListeners();
-          }
-        });
-      }
-    } else {
-      _sampler?.stop();
-    }
+    if (!visible) unawaited(stop());
   }
 
   @override
   void dispose() {
-    _sampler?.stop();
-    _cancelSubscriptions();
-    _session?.close();
+    _disposed = true;
+    unawaited(stop());
     super.dispose();
   }
 }

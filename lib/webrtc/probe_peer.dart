@@ -15,6 +15,8 @@ class ProbePeer {
   final List<RTCIceCandidate> _pendingRemoteCandidates = [];
   bool _remoteDescriptionSet = false;
   bool _closed = false;
+  RtcConnectionState connectionState = RtcConnectionState.idle;
+  RtcIceState iceState = RtcIceState.idle;
 
   final StreamController<RtcConnectionState> _connectionStates =
       StreamController<RtcConnectionState>.broadcast();
@@ -41,10 +43,16 @@ class ProbePeer {
     final pc = await createPeerConnection(config);
     final peer = ProbePeer._(name, pc);
     pc.onConnectionState = (s) {
-      if (!peer._closed) peer._connectionStates.add(mapConnectionState(s));
+      if (!peer._closed) {
+        peer.connectionState = mapConnectionState(s);
+        peer._connectionStates.add(peer.connectionState);
+      }
     };
     pc.onIceConnectionState = (s) {
-      if (!peer._closed) peer._iceStates.add(mapIceState(s));
+      if (!peer._closed) {
+        peer.iceState = mapIceState(s);
+        peer._iceStates.add(peer.iceState);
+      }
     };
     return peer;
   }
@@ -59,6 +67,7 @@ class ProbePeer {
   }
 
   Future<void> addRemoteCandidate(RTCIceCandidate candidate) async {
+    if (_closed || candidate.candidate == null || candidate.candidate!.isEmpty) return;
     if (_remoteDescriptionSet) {
       await _pc.addCandidate(candidate);
     } else {
