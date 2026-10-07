@@ -3,7 +3,11 @@ import 'package:rtc_probe/rtc/models.dart';
 
 /// Outcome of a contextual media permission attempt.
 class MediaAccessResult {
-  const MediaAccessResult({required this.stream, required this.grant, required this.deniedKinds});
+  const MediaAccessResult({
+    required this.stream,
+    required this.grant,
+    required this.deniedKinds,
+  });
 
   final MediaStream? stream; // null when nothing was granted
   final RtcMediaGrant grant;
@@ -41,7 +45,9 @@ class MediaAccess {
     }
 
     try {
-      final stream = await navigator.mediaDevices.getUserMedia(const {'audio': true});
+      final stream = await navigator.mediaDevices.getUserMedia(const {
+        'audio': true,
+      });
       return MediaAccessResult(
         stream: stream,
         grant: RtcMediaGrant.audioOnly,
@@ -51,6 +57,10 @@ class MediaAccess {
       // Microphone denied as well.
     }
 
-    return const MediaAccessResult(stream: null, grant: RtcMediaGrant.none, deniedKinds: ['camera', 'microphone']);
+    return const MediaAccessResult(
+      stream: null,
+      grant: RtcMediaGrant.none,
+      deniedKinds: ['camera', 'microphone'],
+    );
   }
 }

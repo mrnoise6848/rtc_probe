@@ -9,3 +9,5 @@ RTCProbe uses its own demonstration thresholds, not universal industry standards
 | Loss % | ≤0.1 | ≤0.5 | ≤1.5 | ≤4 | >4 |
 
 Upper bounds are inclusive. A single sample changes classification; findings separately require persistence. Excellent transport RTT does not imply healthy media when media fields are unavailable, or Internet health in a local session. Session summary reports the worst measured sample quality, not an overall subjective call score.
+
+At the controller boundary, native Disconnected/Failed overrides live metric quality to Critical with explicit state evidence; connecting/idle has no live media assessment. Old counters after disconnection are not displayed as current healthy measurements.

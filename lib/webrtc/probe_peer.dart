@@ -57,7 +57,9 @@ class ProbePeer {
     return peer;
   }
 
-  Future<void> setRemoteDescriptionSafely(RTCSessionDescription description) async {
+  Future<void> setRemoteDescriptionSafely(
+    RTCSessionDescription description,
+  ) async {
     await _pc.setRemoteDescription(description);
     _remoteDescriptionSet = true;
     for (final candidate in _pendingRemoteCandidates) {
@@ -67,9 +69,14 @@ class ProbePeer {
   }
 
   Future<void> addRemoteCandidate(RTCIceCandidate candidate) async {
-    if (_closed || candidate.candidate == null || candidate.candidate!.isEmpty) return;
+    if (_closed || candidate.candidate == null || candidate.candidate!.isEmpty)
+      return;
     if (_remoteDescriptionSet) {
-      await _pc.addCandidate(candidate);
+      try {
+        await _pc.addCandidate(candidate);
+      } catch (_) {
+        if (!_closed) rethrow;
+      }
     } else {
       _pendingRemoteCandidates.add(candidate);
     }

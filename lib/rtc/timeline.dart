@@ -95,12 +95,23 @@ class RtcSummaryAccumulator {
     if (point.level.index > _worst.index) _worst = point.level;
   }
 
-  RtcSessionSummary finish({required DateTime startedAt, required int durationMs, required int findingsCount}) => RtcSessionSummary(
-    startedAt: startedAt, durationMs: durationMs, sampleCount: _count,
-    avgRttMs: _rtt.average, peakRttMs: _rtt.peak, peakJitterMs: _jitter.peak,
-    avgLossPercent: _loss.average, peakLossPercent: _loss.peak,
-    avgSendKbps: _send.average, avgRecvKbps: _recv.average,
-    worstLevel: _worst, findingsCount: findingsCount,
+  RtcSessionSummary finish({
+    required DateTime startedAt,
+    required int durationMs,
+    required int findingsCount,
+  }) => RtcSessionSummary(
+    startedAt: startedAt,
+    durationMs: durationMs,
+    sampleCount: _count,
+    avgRttMs: _rtt.average,
+    peakRttMs: _rtt.peak,
+    peakJitterMs: _jitter.peak,
+    avgLossPercent: _loss.average,
+    peakLossPercent: _loss.peak,
+    avgSendKbps: _send.average,
+    avgRecvKbps: _recv.average,
+    worstLevel: _worst,
+    findingsCount: findingsCount,
   );
 }
 

@@ -2,7 +2,11 @@ import 'package:rtc_probe/rtc/models.dart';
 
 /// Result of one diagnostic evaluation pass.
 class DiagnosticsUpdate {
-  const DiagnosticsUpdate({required this.raised, required this.cleared, required this.active});
+  const DiagnosticsUpdate({
+    required this.raised,
+    required this.cleared,
+    required this.active,
+  });
 
   final List<RtcFinding> raised; // newly confirmed this tick
   final List<RtcFinding> cleared; // condition gone, removed this tick
@@ -55,26 +59,41 @@ class RtcDiagnosticEngine {
     final raised = <RtcFinding>[];
     final cleared = <RtcFinding>[];
 
-    final rules = <RtcFindingCode, bool Function()>{
-      RtcFindingCode.elevatedRtt: () => metrics.rttMs != null && metrics.rttMs! > 300,
-      RtcFindingCode.highJitter: () => metrics.jitterMs != null && metrics.jitterMs! > 40,
-      RtcFindingCode.highPacketLoss: () =>
-          metrics.packetLossPercent != null && metrics.packetLossPercent! > 4.0,
-      RtcFindingCode.lowOutboundBitrate: () =>
-          videoSending &&
-          metrics.sendBitrateKbps != null &&
-          metrics.sendBitrateKbps! < 100 &&
-          snapshot.connectionState == RtcConnectionState.connected,
-      RtcFindingCode.videoFramesStalled: () =>
-          videoSending && (metrics.videoFps != null && metrics.videoFps! <= 0.01),
+    final rules = <RtcFindingCode, bool? Function()>{
+      RtcFindingCode.elevatedRtt: () =>
+          metrics.rttMs == null ? null : metrics.rttMs! > 300,
+      RtcFindingCode.highJitter: () =>
+          metrics.jitterMs == null ? null : metrics.jitterMs! > 40,
+      RtcFindingCode.highPacketLoss: () => metrics.packetLossPercent == null
+          ? null
+          : metrics.packetLossPercent! > 4.0,
+      RtcFindingCode.lowOutboundBitrate: () => !videoSending
+          ? false
+          : metrics.sendBitrateKbps == null
+          ? null
+          : metrics.sendBitrateKbps! < 100 &&
+                snapshot.connectionState == RtcConnectionState.connected,
+      RtcFindingCode.videoFramesStalled: () => !videoSending
+          ? false
+          : metrics.videoFps == null
+          ? null
+          : metrics.videoFps! <= 0.01,
       RtcFindingCode.connectionInterrupted: () =>
           snapshot.connectionState == RtcConnectionState.disconnected ||
           snapshot.connectionState == RtcConnectionState.failed,
     };
 
     rules.forEach((code, condition) {
-      final needed = code == RtcFindingCode.videoFramesStalled ? stallSustainTicks : sustainTicks;
-      if (condition()) {
+      final needed = code == RtcFindingCode.videoFramesStalled
+          ? stallSustainTicks
+          : sustainTicks;
+      final observed = condition();
+      if (observed == null) {
+        _strikes[code] = 0;
+        _calm[code] = 0;
+        return;
+      }
+      if (observed) {
         _strikes[code] = (_strikes[code] ?? 0) + 1;
         _calm[code] = 0;
         if (_strikes[code]! >= needed && !_findings.containsKey(code)) {
@@ -89,13 +108,19 @@ class RtcDiagnosticEngine {
         if (_findings.containsKey(code)) {
           _calm[code] = (_calm[code] ?? 0) + 1;
           if (_calm[code]! >= clearTicks) {
-            cleared.add(_findings.remove(code)!);
+            final finding = _findings.remove(code)!;
+            finding.active = false;
+            cleared.add(finding);
           }
         }
       }
     });
 
-    return DiagnosticsUpdate(raised: raised, cleared: cleared, active: activeFindings);
+    return DiagnosticsUpdate(
+      raised: raised,
+      cleared: cleared,
+      active: activeFindings,
+    );
   }
 
   RtcFinding _buildFinding(
@@ -160,7 +185,8 @@ class RtcDiagnosticEngine {
           code: code,
           severity: RtcSeverity.critical,
           title: 'Connection interrupted',
-          evidence: 'Connection state reported ${s.connectionState.name} for $sustainTicks samples.',
+          evidence:
+              'Connection state reported ${s.connectionState.name} for $sustainTicks samples.',
           impact: 'Media flow stops until connectivity is re-established or the session is restarted.',
           firstDetectedMs: elapsedMs,
         );

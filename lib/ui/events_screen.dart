@@ -9,13 +9,28 @@ class EventsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Session events')),
-    body: ListenableBuilder(listenable: controller, builder: (context, _) {
-      final events = controller.events.reversed.toList(growable: false);
-      if (events.isEmpty) return const Center(child: Text('Start a session to collect events.'));
-      return ListView.builder(itemCount: events.length, itemBuilder: (context, index) {
-        final event = events[index];
-        return ListTile(leading: const Icon(Icons.history), title: Text(event.message), subtitle: Text('${clockLabel(event.wallClock)} • +${durationLabel(event.elapsedMs)}'));
-      });
-    }),
+    body: ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final events = controller.events.reversed.toList(growable: false);
+        if (events.isEmpty)
+          return const Center(
+            child: Text('Start a session to collect events.'),
+          );
+        return ListView.builder(
+          itemCount: events.length,
+          itemBuilder: (context, index) {
+            final event = events[index];
+            return ListTile(
+              leading: const Icon(Icons.history),
+              title: Text(event.message),
+              subtitle: Text(
+                '${clockLabel(event.wallClock)} • +${durationLabel(event.elapsedMs)}',
+              ),
+            );
+          },
+        );
+      },
+    ),
   );
 }

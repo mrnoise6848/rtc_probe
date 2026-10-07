@@ -6,10 +6,25 @@
 library;
 
 /// Peer-level connection state, normalized across platforms.
-enum RtcConnectionState { idle, connecting, connected, disconnected, failed, closed }
+enum RtcConnectionState {
+  idle,
+  connecting,
+  connected,
+  disconnected,
+  failed,
+  closed,
+}
 
 /// ICE connection state, normalized across platforms.
-enum RtcIceState { idle, checking, connected, completed, failed, disconnected, closed }
+enum RtcIceState {
+  idle,
+  checking,
+  connected,
+  completed,
+  failed,
+  disconnected,
+  closed,
+}
 
 /// Session-level lifecycle of a probe run.
 enum RtcSessionPhase { idle, starting, live, ended, failed }
@@ -64,7 +79,8 @@ class RtcSession {
   RtcMediaGrant mediaGrant;
 
   /// Signaling topology label shown in the UI / summary.
-  static const String signalingMode = 'local in-process loopback (probe ↔ mirror)';
+  static const String signalingMode =
+      'local in-process loopback (probe ↔ mirror)';
 }
 
 /// Information about the currently selected ICE candidate pair.
@@ -82,7 +98,8 @@ class RtcCandidatePairInfo {
   final bool nominated;
   final String localCandidateType; // host / srflx / prflx / relay
   final String remoteCandidateType;
-  final int? availableOutgoingBitbps; // BPS estimate from the transport, may be null
+  final int?
+  availableOutgoingBitbps; // BPS estimate from the transport, may be null
   final double? currentRttMs; // transport-level RTT from getStats (s → ms)
 }
 
@@ -322,9 +339,7 @@ class RtcSessionSummary {
 class RtcMetric {
   const RtcMetric(this.id, this.label, this.value, this.unit);
 
-  const RtcMetric.unavailable(this.id, this.label)
-      : value = null,
-        unit = '';
+  const RtcMetric.unavailable(this.id, this.label) : value = null, unit = '';
 
   final String id;
   final String label;
@@ -342,16 +357,18 @@ class NetworkPathInfo {
   });
 
   const NetworkPathInfo.unavailable()
-      : interfaceType = 'unavailable',
-        isExpensive = false,
-        isConstrained = false,
-        source = 'unavailable';
+    : interfaceType = 'unavailable',
+      isExpensive = false,
+      isConstrained = false,
+      source = 'unavailable';
 
   final String interfaceType; // wifi | cellular | ethernet | none | unavailable
   final bool isExpensive; // e.g. cellular / hotspot
   final bool isConstrained; // OS reports low-data mode
-  final String source; // swift-nwpathmonitor | kotlin-connectivity | unavailable
+  final String
+  source; // swift-nwpathmonitor | kotlin-connectivity | unavailable
 
   /// True when the native layer reported something usable.
-  bool get isAvailable => interfaceType != 'unavailable' && interfaceType != 'none';
+  bool get isAvailable =>
+      interfaceType != 'unavailable' && interfaceType != 'none';
 }

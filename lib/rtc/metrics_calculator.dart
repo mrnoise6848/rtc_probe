@@ -20,19 +20,11 @@ class RtcMetricsCalculator {
       rttMs: _clean(rtt),
       jitterMs: _clean(_worstJitter(current)),
       packetLossPercent: _lossPercent(current, previous),
-      sendBitrateKbps: _bitrateKbps(
-        nowBytes: _bytes(current.outboundAudio, current.outboundVideo),
-        prevBytes: _bytes(previous?.outboundAudio, previous?.outboundVideo),
-        elapsedMs: current.elapsedMs,
-        prevElapsedMs: previous?.elapsedMs,
+      sendBitrateKbps: _streamBitrate(current, previous, outbound: true),
+      recvBitrateKbps: _streamBitrate(current, previous, outbound: false),
+      videoFps: _clean(
+        current.outboundVideo?.framesPerSecond ?? _frameRate(current, previous),
       ),
-      recvBitrateKbps: _bitrateKbps(
-        nowBytes: _bytes(current.inboundAudio, current.inboundVideo),
-        prevBytes: _bytes(previous?.inboundAudio, previous?.inboundVideo),
-        elapsedMs: current.elapsedMs,
-        prevElapsedMs: previous?.elapsedMs,
-      ),
-      videoFps: _clean(current.outboundVideo?.framesPerSecond),
       sendResolution: _resolution(current.outboundVideo),
     );
   }
@@ -42,7 +34,9 @@ class RtcMetricsCalculator {
       s.outboundAudio?.roundTripTimeMs,
       s.outboundVideo?.roundTripTimeMs,
     ].whereType<double>();
-    return candidates.isEmpty ? null : candidates.reduce((a, b) => a > b ? a : b);
+    return candidates.isEmpty
+        ? null
+        : candidates.reduce((a, b) => a > b ? a : b);
   }
 
   double? _worstJitter(RtcStatsSnapshot s) {
@@ -50,32 +44,63 @@ class RtcMetricsCalculator {
       s.inboundAudio?.jitterMs,
       s.inboundVideo?.jitterMs,
     ].whereType<double>();
-    return candidates.isEmpty ? null : candidates.reduce((a, b) => a > b ? a : b);
+    return candidates.isEmpty
+        ? null
+        : candidates.reduce((a, b) => a > b ? a : b);
   }
 
-  int? _bytes(RtcMediaStreamStats? audio, RtcMediaStreamStats? video) {
-    final parts = [audio?.bytes, video?.bytes].whereType<int>();
-    if (parts.isEmpty) return null;
-    return parts.reduce((a, b) => a + b);
-  }
-
-  double? _bitrateKbps({
-    required int? nowBytes,
-    required int? prevBytes,
-    required int elapsedMs,
-    required int? prevElapsedMs,
+  double? _streamBitrate(
+    RtcStatsSnapshot current,
+    RtcStatsSnapshot? previous, {
+    required bool outbound,
   }) {
-    if (nowBytes == null || prevBytes == null || prevElapsedMs == null) return null;
-    final dBytes = nowBytes - prevBytes;
-    final dtMs = elapsedMs - prevElapsedMs;
-    if (dBytes < 0 || dtMs <= 0) return null; // counter reset or clock oddity
-    return dBytes * 8 / dtMs; // kbps = bytes*8 / ms
+    if (previous == null) return null;
+    final dt = current.elapsedMs - previous.elapsedMs;
+    if (dt <= 0) return null;
+    final now = outbound
+        ? [current.outboundAudio, current.outboundVideo]
+        : [current.inboundAudio, current.inboundVideo];
+    final old = outbound
+        ? [previous.outboundAudio, previous.outboundVideo]
+        : [previous.inboundAudio, previous.inboundVideo];
+    var bytes = 0;
+    var seen = false;
+    for (var i = 0; i < now.length; i++) {
+      final a = now[i], b = old[i];
+      if (a == null && b == null) continue;
+      if (a == null ||
+          b == null ||
+          a.ssrc != b.ssrc ||
+          a.kind != b.kind ||
+          a.bytes == null ||
+          b.bytes == null)
+        return null;
+      final delta = a.bytes! - b.bytes!;
+      if (delta < 0) return null;
+      bytes += delta;
+      seen = true;
+    }
+    return seen ? bytes * 8 / dt : null;
+  }
+
+  double? _frameRate(RtcStatsSnapshot current, RtcStatsSnapshot? previous) {
+    final a = current.outboundVideo, b = previous?.outboundVideo;
+    if (a == null ||
+        b == null ||
+        a.ssrc != b.ssrc ||
+        a.frames == null ||
+        b.frames == null)
+      return null;
+    final dt = current.elapsedMs - previous!.elapsedMs;
+    final frames = a.frames! - b.frames!;
+    return dt > 0 && frames >= 0 ? frames * 1000 / dt : null;
   }
 
   /// Loss ratio over the interval, pooled across inbound audio+video:
   /// lost / (received + lost). Both counters come from real RTP statistics.
   double? _lossPercent(RtcStatsSnapshot current, RtcStatsSnapshot? previous) {
-    if (previous == null) return null;
+    if (previous == null || current.elapsedMs <= previous.elapsedMs)
+      return null;
     var dLost = 0, dReceived = 0;
     var seen = false;
     for (final stream in [current.inboundAudio, current.inboundVideo]) {
@@ -86,7 +111,11 @@ class RtcMetricsCalculator {
       final lostPrev = prev.packetsLost;
       final recvNow = stream.packets;
       final recvPrev = prev.packets;
-      if (lostNow == null || lostPrev == null || recvNow == null || recvPrev == null) continue;
+      if (lostNow == null ||
+          lostPrev == null ||
+          recvNow == null ||
+          recvPrev == null)
+        continue;
       final dl = lostNow - lostPrev;
       final dr = recvNow - recvPrev;
       if (dl < 0 || dr < 0) return null; // counter reset
@@ -96,7 +125,7 @@ class RtcMetricsCalculator {
     }
     if (!seen) return null;
     final total = dReceived + dLost;
-    if (total <= 0) return 0;
+    if (total <= 0) return null;
     return dLost / total * 100.0;
   }
 
@@ -106,7 +135,8 @@ class RtcMetricsCalculator {
   }
 
   double? _clean(double? value) {
-    if (value == null || value.isNaN || value.isNegative || value > 1e9) return null;
+    if (value == null || value.isNaN || value.isNegative || value > 1e9)
+      return null;
     return value;
   }
 }
@@ -114,7 +144,7 @@ class RtcMetricsCalculator {
 extension _StreamLookup on RtcStatsSnapshot {
   RtcMediaStreamStats? _streamWithSsrc(int ssrc) {
     for (final s in [inboundAudio, inboundVideo]) {
-      if (s?.ssrc == ssrc) return s;
+      if (s != null && s.ssrc == ssrc) return s;
     }
     return null;
   }

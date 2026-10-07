@@ -23,13 +23,19 @@ class RtcStatsCollector {
 
   Future<StatsCollectionResult> collect() async {
     if (_session.isClosed) {
-      return const StatsCollectionResult(reports: null, error: 'session closed');
+      return const StatsCollectionResult(
+        reports: null,
+        error: 'session closed',
+      );
     }
     try {
       final reports = await _session.collectStats();
       return StatsCollectionResult(reports: reports);
     } catch (_) {
-      return const StatsCollectionResult(reports: null, error: 'native stats pull failed');
+      return const StatsCollectionResult(
+        reports: null,
+        error: 'native stats pull failed',
+      );
     }
   }
 }

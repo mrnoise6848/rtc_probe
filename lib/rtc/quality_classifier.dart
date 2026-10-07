@@ -24,7 +24,10 @@ class RtcQosThresholds {
 
   final double rttGoodMs, rttFairMs, rttPoorMs, rttCriticalMs;
   final double jitterGoodMs, jitterFairMs, jitterPoorMs, jitterCriticalMs;
-  final double lossGoodPercent, lossFairPercent, lossPoorPercent, lossCriticalPercent;
+  final double lossGoodPercent,
+      lossFairPercent,
+      lossPoorPercent,
+      lossCriticalPercent;
 
   static const RtcQosThresholds defaults = RtcQosThresholds();
 }
@@ -75,7 +78,8 @@ class RtcQualityClassifier {
             t.lossPoorPercent,
             t.lossCriticalPercent,
           ),
-          evidence: '${metrics.packetLossPercent!.toStringAsFixed(2)}% packet loss',
+          evidence:
+              '${metrics.packetLossPercent!.toStringAsFixed(2)}% packet loss',
         ),
     ];
 
@@ -86,7 +90,14 @@ class RtcQualityClassifier {
     return RtcQualityReport(level: level, assessments: assessments);
   }
 
-  RtcQualityLevel _level(double v, double good, double fair, double poor, double critical) {
+  RtcQualityLevel _level(
+    double v,
+    double good,
+    double fair,
+    double poor,
+    double critical,
+  ) {
+    if (!v.isFinite || v < 0) return RtcQualityLevel.unknown;
     if (v <= good) return RtcQualityLevel.excellent;
     if (v <= fair) return RtcQualityLevel.good;
     if (v <= poor) return RtcQualityLevel.fair;

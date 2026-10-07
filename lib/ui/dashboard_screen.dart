@@ -18,7 +18,8 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingObserver {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   final SessionController _controller = SessionController();
 
   @override
@@ -50,14 +51,40 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           appBar: AppBar(
             title: const Text('RTCProbe'),
             actions: [
-              IconButton(tooltip: 'Detailed metrics', icon: const Icon(Icons.analytics_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DetailsScreen(controller: _controller)))),
-              IconButton(tooltip: 'Session events', icon: const Icon(Icons.history), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EventsScreen(controller: _controller)))),
-              IconButton(tooltip: 'Inspect metric history', icon: const Icon(Icons.timeline), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => HistoryScreen(controller: _controller)))),
+              IconButton(
+                tooltip: 'Detailed metrics',
+                icon: const Icon(Icons.analytics_outlined),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DetailsScreen(controller: _controller),
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Session events',
+                icon: const Icon(Icons.history),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => EventsScreen(controller: _controller),
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Inspect metric history',
+                icon: const Icon(Icons.timeline),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => HistoryScreen(controller: _controller),
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
             ],
           ),
           body: SafeArea(
-            child: _controller.phase == RtcSessionPhase.idle || _controller.phase == RtcSessionPhase.ended
+            child:
+                _controller.phase == RtcSessionPhase.idle ||
+                    _controller.phase == RtcSessionPhase.ended
                 ? _IdleView(controller: _controller)
                 : _LiveView(controller: _controller),
           ),
@@ -106,7 +133,8 @@ class _IdleView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (controller.summary != null) SummaryCard(summary: controller.summary!),
+        if (controller.summary != null)
+          SummaryCard(summary: controller.summary!),
         Text(
           'Why is a realtime connection performing badly?',
           style: Theme.of(context).textTheme.headlineSmall,
@@ -117,7 +145,8 @@ class _IdleView extends StatelessWidget {
           '(local probe ↔ mirror peer, no server), samples live statistics and '
           'explains degradation. Camera and microphone are requested only on Start. '
           'Capture stays on this device. Local loopback does not measure Internet quality.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
@@ -140,7 +169,10 @@ class _LiveView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
-        Align(alignment: Alignment.centerLeft, child: _NetworkChip(controller: controller)),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: _NetworkChip(controller: controller),
+        ),
         _StatusHeader(controller: controller),
         const SizedBox(height: 12),
         _MetricGrid(controller: controller),
@@ -172,11 +204,18 @@ class _StatusHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Connection', style: Theme.of(context).textTheme.labelMedium),
+                  Text(
+                    'Connection',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.circle, size: 12, color: _stateColor(controller, scheme)),
+                      Icon(
+                        Icons.circle,
+                        size: 12,
+                        color: _stateColor(controller, scheme),
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         controller.phase == RtcSessionPhase.starting
@@ -189,7 +228,8 @@ class _StatusHeader extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'ICE: ${controller.iceState.name}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -198,14 +238,19 @@ class _StatusHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Quality', style: Theme.of(context).textTheme.labelMedium),
+                  Text(
+                    'Quality',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
                   const SizedBox(height: 4),
                   Text(
-                    quality == RtcQualityLevel.unknown ? '—' : quality.name.toUpperCase(),
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(color: qualityColor(quality, scheme), fontWeight: FontWeight.bold),
+                    quality == RtcQualityLevel.unknown
+                        ? '—'
+                        : quality.name.toUpperCase(),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: qualityColor(quality, scheme),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -248,14 +293,26 @@ class _MetricGrid extends StatelessWidget {
       ('Receive bitrate', kbpsLabel(m.recvBitrateKbps)),
       ('Video frames / second', fpsLabel(m.videoFps)),
     ];
-    return LayoutBuilder(builder: (context, constraints) {
-      final scale = MediaQuery.textScalerOf(context).scale(1);
-      final columns = constraints.maxWidth >= 600 && scale <= 1.3 ? 3 : (scale > 1.5 ? 1 : 2);
-      final width = (constraints.maxWidth - (columns - 1) * 8) / columns;
-      return Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final entry in entries) SizedBox(width: width, child: _MetricCard(label: entry.$1, value: entry.$2)),
-      ]);
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        final columns = constraints.maxWidth >= 600 && scale <= 1.3
+            ? 3
+            : (scale > 1.5 ? 1 : 2);
+        final width = (constraints.maxWidth - (columns - 1) * 8) / columns;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final entry in entries)
+              SizedBox(
+                width: width,
+                child: _MetricCard(label: entry.$1, value: entry.$2),
+              ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -277,14 +334,18 @@ class _MetricCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           child: Column(
             children: [
-              Text(label, style: Theme.of(context).textTheme.labelSmall, textAlign: TextAlign.center),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 6),
               Text(
                 unavailable ? 'Not available' : value,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: unavailable ? scheme.outline : null,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: unavailable ? scheme.outline : null,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -326,9 +387,16 @@ class _TimelineCardState extends State<_TimelineCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Timeline — last 60 s', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Timeline — last 60 s',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 4),
-            Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
             const SizedBox(height: 8),
             MetricSparkline(
               series: points,
@@ -386,14 +454,17 @@ class _FindingsCard extends StatelessWidget {
             if (findings.isEmpty)
               Text(
                 'No findings — no degradation pattern detected.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: scheme.onSurfaceVariant),
               )
             else
               for (final finding in findings)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
-                    finding.severity == RtcSeverity.critical ? Icons.error_outline : Icons.warning_amber,
+                    finding.severity == RtcSeverity.critical
+                        ? Icons.error_outline
+                        : Icons.warning_amber,
                     color: severityColor(finding.severity, scheme),
                   ),
                   title: Text(finding.title),

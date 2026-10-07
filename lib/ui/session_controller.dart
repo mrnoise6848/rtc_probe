@@ -35,6 +35,7 @@ class SessionController extends ChangeNotifier {
   final RtcDiagnosticEngine _diagnostics = RtcDiagnosticEngine();
 
   bool _disposed = false;
+  bool _visible = true;
   int _generation = 0;
   Future<void>? _starting;
   Future<void>? _stopping;
@@ -65,8 +66,10 @@ class SessionController extends ChangeNotifier {
   RtcSession? _sessionModel;
   RtcStatsSnapshot? _snapshot;
   RtcDerivedMetrics _metrics = const RtcDerivedMetrics();
-  RtcQualityReport _quality =
-      const RtcQualityReport(level: RtcQualityLevel.unknown, assessments: []);
+  RtcQualityReport _quality = const RtcQualityReport(
+    level: RtcQualityLevel.unknown,
+    assessments: [],
+  );
   RtcQualityLevel _lastNotifiedLevel = RtcQualityLevel.unknown;
   NetworkPathInfo _networkPath = const NetworkPathInfo.unavailable();
   double? _appRttMs;
@@ -85,10 +88,12 @@ class SessionController extends ChangeNotifier {
   NetworkPathInfo get networkPath => _networkPath;
   double? get appRttMs => _appRttMs;
   RtcSessionSummary? get summary => _summary;
-  bool get isLive => _phase == RtcSessionPhase.live || _phase == RtcSessionPhase.starting;
+  bool get isLive =>
+      _phase == RtcSessionPhase.live || _phase == RtcSessionPhase.starting;
   bool get videoTrackEnabled => _videoTrackEnabled;
   int? get appliedBitrateCapKbps => _appliedBitrateCapKbps;
-  bool get hasVideoGrant => _sessionModel?.mediaGrant == RtcMediaGrant.audioVideo;
+  bool get hasVideoGrant =>
+      _sessionModel?.mediaGrant == RtcMediaGrant.audioVideo;
   List<RtcFinding> get findings => _diagnostics.activeFindings;
   List<RtcTimelinePoint> get timelinePoints => _timeline.trailing(60000);
   List<RtcTimelinePoint> get historyPoints => _timeline.points;
@@ -97,10 +102,14 @@ class SessionController extends ChangeNotifier {
   // ---- Session lifecycle -------------------------------------------------
 
   Future<void> start() async {
-    if (_disposed || isLive || _stopping != null) return;
+    if (_disposed || !_visible || isLive || _stopping != null) return;
     final pending = _start(++_generation);
     _starting = pending;
-    try { await pending; } finally { if (identical(_starting, pending)) _starting = null; }
+    try {
+      await pending;
+    } finally {
+      if (identical(_starting, pending)) _starting = null;
+    }
   }
 
   bool _valid(int generation) => !_disposed && generation == _generation;
@@ -108,7 +117,10 @@ class SessionController extends ChangeNotifier {
   Future<void> _start(int generation) async {
     _phase = RtcSessionPhase.starting;
     _resetSessionState();
-    _log(RtcSessionEventKind.sessionStarted, 'Session starting (${RtcSession.signalingMode})');
+    _log(
+      RtcSessionEventKind.sessionStarted,
+      'Session starting (${RtcSession.signalingMode})',
+    );
     notifyListeners();
 
     _networkPath = await _networkInfo.current();
@@ -123,32 +135,45 @@ class SessionController extends ChangeNotifier {
     // Contextual permission request with graceful degradation.
     final access = await const MediaAccess().acquire();
     if (!_valid(generation)) {
-      for (final track in access.stream?.getTracks() ?? []) { await track.stop(); }
+      for (final track in access.stream?.getTracks() ?? []) {
+        await track.stop();
+      }
       await access.stream?.dispose();
       return;
     }
     if (access.deniedKinds.isNotEmpty) {
       _totalFindingsRaised++;
-      _log(RtcSessionEventKind.mediaDenied,
-          'Capture unavailable: ${access.deniedKinds.join(", ")} — using ${access.grant.name}');
-      _diagnostics.raiseManual(RtcFinding(
-        code: RtcFindingCode.mediaUnavailable,
-        severity: RtcSeverity.info,
-        title: 'Media unavailable',
-        evidence: 'Capture failed or permission denied for ${access.deniedKinds.join(", ")}.',
-        impact: 'Media metrics will report "Not available"; transport diagnostics remain valid.',
-        firstDetectedMs: 0,
-      ));
+      _log(
+        RtcSessionEventKind.mediaDenied,
+        'Capture unavailable: ${access.deniedKinds.join(", ")} — using ${access.grant.name}',
+      );
+      _diagnostics.raiseManual(
+        RtcFinding(
+          code: RtcFindingCode.mediaUnavailable,
+          severity: RtcSeverity.info,
+          title: 'Media unavailable',
+          evidence:
+              'Capture failed or permission denied for ${access.deniedKinds.join(", ")}.',
+          impact: 'Media metrics will report "Not available"; transport diagnostics remain valid.',
+          firstDetectedMs: 0,
+        ),
+      );
     }
 
     try {
       final session = await LoopbackRtcSession.start(media: access.stream);
-      if (!_valid(generation)) { await session.close(); return; }
+      if (!_valid(generation)) {
+        await session.close();
+        return;
+      }
       _session = session;
     } catch (_) {
       if (!_valid(generation)) return;
       _phase = RtcSessionPhase.failed;
-      _log(RtcSessionEventKind.error, 'WebRTC initialization failed. Try a fresh session.');
+      _log(
+        RtcSessionEventKind.error,
+        'WebRTC initialization failed. Try a fresh session.',
+      );
       notifyListeners();
       return;
     }
@@ -172,22 +197,32 @@ class SessionController extends ChangeNotifier {
 
     _phase = RtcSessionPhase.live;
     _videoTrackEnabled = true;
-    _log(RtcSessionEventKind.sessionStarted,
-        'Session live — media grant: ${access.grant.name}');
+    _log(
+      RtcSessionEventKind.sessionStarted,
+      'Session live — media grant: ${access.grant.name}',
+    );
     notifyListeners();
 
     _sampler = RtcSampler(interval: samplingInterval)..start(_tick);
   }
 
   Future<void> stop() async {
-    if (_stopping != null) { await _stopping; return; }
+    if (_stopping != null) {
+      await _stopping;
+      return;
+    }
     final pending = _stop();
     _stopping = pending;
-    try { await pending; } finally { _stopping = null; }
+    try {
+      await pending;
+    } finally {
+      _stopping = null;
+    }
   }
 
   Future<void> _stop() async {
-    if (_phase != RtcSessionPhase.live && _phase != RtcSessionPhase.starting) return;
+    if (_phase != RtcSessionPhase.live && _phase != RtcSessionPhase.starting)
+      return;
     ++_generation;
     _phase = RtcSessionPhase.ended;
     _clock.stop();
@@ -210,7 +245,10 @@ class SessionController extends ChangeNotifier {
       findingsCount: _totalFindingsRaised,
     );
     _phase = RtcSessionPhase.ended;
-    _log(RtcSessionEventKind.sessionEnded, 'Session ended after ${_formatDuration(_summary!.durationMs)}');
+    _log(
+      RtcSessionEventKind.sessionEnded,
+      'Session ended after ${_formatDuration(_summary!.durationMs)}',
+    );
     notifyListeners();
   }
 
@@ -234,7 +272,10 @@ class SessionController extends ChangeNotifier {
     _previousSnapshot = null;
     _snapshot = null;
     _metrics = const RtcDerivedMetrics();
-    _quality = const RtcQualityReport(level: RtcQualityLevel.unknown, assessments: []);
+    _quality = const RtcQualityReport(
+      level: RtcQualityLevel.unknown,
+      assessments: [],
+    );
     _lastNotifiedLevel = RtcQualityLevel.unknown;
     _summary = null;
     _appRttMs = null;
@@ -250,8 +291,10 @@ class SessionController extends ChangeNotifier {
   Future<void> _tick() async {
     final session = _session;
     final collector = _collector;
-    if (session == null || collector == null || _phase != RtcSessionPhase.live) return;
+    if (session == null || collector == null || _phase != RtcSessionPhase.live)
+      return;
 
+    _appRttMs = null;
     session.ping();
 
     final collected = await collector.collect();
@@ -260,10 +303,16 @@ class SessionController extends ChangeNotifier {
       _snapshot = null;
       _previousSnapshot = null;
       _metrics = const RtcDerivedMetrics();
-      _quality = const RtcQualityReport(level: RtcQualityLevel.unknown, assessments: []);
+      _quality = const RtcQualityReport(
+        level: RtcQualityLevel.unknown,
+        assessments: [],
+      );
       if (!_statsUnavailableLogged) {
         _statsUnavailableLogged = true;
-        _log(RtcSessionEventKind.error, 'Stats unavailable: ${collected.error}');
+        _log(
+          RtcSessionEventKind.error,
+          'Stats unavailable: ${collected.error}',
+        );
       }
       notifyListeners();
       return;
@@ -280,15 +329,34 @@ class SessionController extends ChangeNotifier {
     );
     _snapshot = snapshot;
 
-    final metrics = _calculator.compute(current: snapshot, previous: _previousSnapshot);
+    final metrics = _connectionState == RtcConnectionState.connected
+        ? _calculator.compute(current: snapshot, previous: _previousSnapshot)
+        : const RtcDerivedMetrics();
     _metrics = metrics;
     _previousSnapshot = snapshot;
 
-    final quality = _classifier.classify(metrics);
+    final quality =
+        _connectionState == RtcConnectionState.disconnected ||
+            _connectionState == RtcConnectionState.failed
+        ? RtcQualityReport(
+            level: RtcQualityLevel.critical,
+            assessments: [
+              RtcMetricAssessment(
+                metricId: 'connection',
+                level: RtcQualityLevel.critical,
+                evidence: 'Native connection state: ${_connectionState.name}',
+              ),
+            ],
+          )
+        : _classifier.classify(metrics);
     _quality = quality;
-    if (quality.level != _lastNotifiedLevel && quality.level != RtcQualityLevel.unknown) {
+    if (quality.level != _lastNotifiedLevel &&
+        quality.level != RtcQualityLevel.unknown) {
       _lastNotifiedLevel = quality.level;
-      _log(RtcSessionEventKind.qualityChanged, 'Network quality: ${quality.level.name.toUpperCase()}');
+      _log(
+        RtcSessionEventKind.qualityChanged,
+        'Network quality: ${quality.level.name.toUpperCase()}',
+      );
     }
 
     final diagnostics = _diagnostics.evaluate(
@@ -299,7 +367,10 @@ class SessionController extends ChangeNotifier {
     );
     for (final raised in diagnostics.raised) {
       _totalFindingsRaised++;
-      _log(RtcSessionEventKind.findingRaised, 'Finding: ${raised.title} — ${raised.evidence}');
+      _log(
+        RtcSessionEventKind.findingRaised,
+        'Finding: ${raised.title} — ${raised.evidence}',
+      );
     }
     for (final cleared in diagnostics.cleared) {
       _log(RtcSessionEventKind.findingCleared, 'Resolved: ${cleared.title}');
@@ -326,7 +397,10 @@ class SessionController extends ChangeNotifier {
   void _onConnectionState(RtcConnectionState state) {
     if (_connectionState == state) return;
     _connectionState = state;
-    _log(RtcSessionEventKind.connectionState, 'Connection state: ${state.name}');
+    _log(
+      RtcSessionEventKind.connectionState,
+      'Connection state: ${state.name}',
+    );
     notifyListeners();
   }
 
@@ -340,12 +414,14 @@ class SessionController extends ChangeNotifier {
   void _log(RtcSessionEventKind kind, String message) {
     final started = _sessionModel?.startedAt;
     final now = DateTime.now();
-    _events.add(RtcSessionEvent(
-      wallClock: now,
-      elapsedMs: started == null ? 0 : now.difference(started).inMilliseconds,
-      kind: kind,
-      message: message,
-    ));
+    _events.add(
+      RtcSessionEvent(
+        wallClock: now,
+        elapsedMs: started == null ? 0 : _clock.elapsedMilliseconds,
+        kind: kind,
+        message: message,
+      ),
+    );
     if (_events.length > _maxEvents) {
       _events.removeRange(0, _events.length - _maxEvents);
     }
@@ -364,22 +440,29 @@ class SessionController extends ChangeNotifier {
     if (session == null) return;
     session.setVideoEnabled(enabled);
     _videoTrackEnabled = enabled;
-    _log(RtcSessionEventKind.degradationApplied,
-        enabled ? 'Video track resumed' : 'Video track paused (platform may send black frames)');
+    _log(
+      RtcSessionEventKind.degradationApplied,
+      enabled
+          ? 'Video track resumed'
+          : 'Video track paused (platform may send black frames)',
+    );
     notifyListeners();
   }
 
   Future<bool> applyBitrateCapKbps(int? kbps) async {
     final session = _session;
     if (session == null) return false;
-    final ok = await session.applyMaxVideoBitrate(kbps == null ? null : kbps * 1000);
+    final ok = await session.applyMaxVideoBitrate(
+      kbps == null ? null : kbps * 1000,
+    );
+    if (_disposed || !identical(session, _session) || !isLive) return false;
     if (ok) _appliedBitrateCapKbps = kbps;
     _log(
       RtcSessionEventKind.degradationApplied,
       ok
           ? (kbps == null
-              ? 'Encoder bitrate cap removed'
-              : 'Encoder bitrate capped at $kbps kbps (real encoder behavior)')
+                ? 'Encoder bitrate cap removed'
+                : 'Encoder bitrate capped at $kbps kbps (real encoder behavior)')
           : 'Encoder bitrate cap rejected by platform',
     );
     notifyListeners();
@@ -389,19 +472,22 @@ class SessionController extends ChangeNotifier {
   Future<void> dropMirrorPeer() async {
     final session = _session;
     if (session == null) return;
-    _log(RtcSessionEventKind.degradationApplied, 'Mirror peer dropped — probe should observe ICE failure');
+    _log(
+      RtcSessionEventKind.degradationApplied,
+      'Mirror peer dropped — probe should observe ICE failure',
+    );
     await session.dropMirrorPeer();
     notifyListeners();
   }
 
   Future<void> restart() async {
     await stop();
-    await Future<void>.delayed(const Duration(milliseconds: 300));
     await start();
   }
 
   /// Background ends the session, releasing native capture and connections.
   void handleAppLifecycle(bool visible) {
+    _visible = visible;
     if (!visible) unawaited(stop());
   }
 

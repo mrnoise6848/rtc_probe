@@ -13,7 +13,9 @@ class NetworkInfoService {
 
   Future<NetworkPathInfo> current() async {
     try {
-      final map = await _channel.invokeMethod<Map<dynamic, dynamic>>('getCurrentPath');
+      final map = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'getCurrentPath',
+      );
       if (map == null) return const NetworkPathInfo.unavailable();
       return NetworkPathInfo(
         interfaceType: (map['interfaceType'] as String?) ?? 'unavailable',

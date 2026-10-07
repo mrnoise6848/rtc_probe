@@ -5,7 +5,8 @@ import 'package:rtc_probe/rtc/models.dart';
 /// an explicit "Not available" — never as a fake 0.
 String msLabel(double? v) => v == null ? '—' : '${v.toStringAsFixed(0)} ms';
 
-String kbpsLabel(double? v) => v == null ? '—' : '${v.toStringAsFixed(v >= 100 ? 0 : 1)} kbps';
+String kbpsLabel(double? v) =>
+    v == null ? '—' : '${v.toStringAsFixed(v >= 100 ? 0 : 1)} kbps';
 
 String percentLabel(double? v) => v == null ? '—' : '${v.toStringAsFixed(2)}%';
 

@@ -34,7 +34,10 @@ class RtcStatsNormalizer {
     RtcMediaStreamStats? inboundVideo;
 
     for (final r in byType['outbound-rtp'] ?? const []) {
-      final stats = _outbound(r, remoteInbound: _matchingRemoteInbound(r, byType['remote-inbound-rtp']));
+      final stats = _outbound(
+        r,
+        remoteInbound: _matchingRemoteInbound(r, byType['remote-inbound-rtp']),
+      );
       if (stats.kind == 'audio') {
         outboundAudio = stats;
       } else if (stats.kind == 'video') {
@@ -77,7 +80,7 @@ class RtcStatsNormalizer {
     return null;
   }
 
-  RtcTransportStats? _transport(List<StatsReport>? reports) {
+  _TransportInfo? _transport(List<StatsReport>? reports) {
     if (reports == null || reports.isEmpty) return null;
     final t = reports.first;
     return _TransportInfo(
@@ -99,7 +102,9 @@ class RtcStatsNormalizer {
       }
     }
     selected ??= pairs.firstWhere(
-      (p) => p.values['state']?.toString() == 'succeeded' && p.values['nominated'] == true,
+      (p) =>
+          p.values['state']?.toString() == 'succeeded' &&
+          p.values['nominated'] == true,
       orElse: () => pairs.firstWhere(
         (p) => p.values['state']?.toString() == 'succeeded',
         orElse: () => pairs.first,
@@ -113,7 +118,8 @@ class RtcStatsNormalizer {
       nominated: selected.values['nominated'] == true,
       localCandidateType: _candidateType(byId[localId]),
       remoteCandidateType: _candidateType(byId[remoteId]),
-      availableOutgoingBitbps: _num(selected.values['availableOutgoingBitrate'])?.round(),
+      availableOutgoingBitbps: _num(selected.values['availableOutgoingBitrate'])
+          ?.round(),
       currentRttMs: _secondsToMs(_num(selected.values['currentRoundTripTime'])),
     );
   }
@@ -131,7 +137,9 @@ class RtcStatsNormalizer {
       bytes: _num(r.values['bytesSent'])?.toInt(),
       packets: _num(r.values['packetsSent'])?.toInt(),
       jitterMs: null, // outbound reports carry no jitter; see remote-inbound
-      roundTripTimeMs: _secondsToMs(_num(remoteInbound?.values['roundTripTime'])),
+      roundTripTimeMs: _secondsToMs(
+        _num(remoteInbound?.values['roundTripTime']),
+      ),
       fractionLost: _num(remoteInbound?.values['fractionLost'])?.toDouble(),
       framesPerSecond: _num(r.values['framesPerSecond'])?.toDouble(),
       frames: _num(r.values['framesEncoded'])?.toInt(),
@@ -175,7 +183,8 @@ class RtcStatsNormalizer {
   }
 
   String _kind(StatsReport r) {
-    final kind = r.values['kind']?.toString() ?? r.values['mediaType']?.toString();
+    final kind =
+        r.values['kind']?.toString() ?? r.values['mediaType']?.toString();
     if (kind == 'audio' || kind == 'video') return kind;
     // Fall back to heuristics on the report id used by some native builds.
     final id = r.id.toLowerCase();
@@ -187,8 +196,11 @@ class RtcStatsNormalizer {
   /// Reports may deliver numbers as num or numeric strings depending on the
   /// platform codec layer; accepts both.
   num? _num(dynamic value) {
-    if (value is num) return value;
-    if (value is String) return num.tryParse(value);
+    if (value is num) return value.isFinite ? value : null;
+    if (value is String) {
+      final parsed = num.tryParse(value);
+      return parsed?.isFinite == true ? parsed : null;
+    }
     return null;
   }
 

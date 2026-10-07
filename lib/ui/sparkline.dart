@@ -27,7 +27,12 @@ class MetricSparkline extends StatelessWidget {
         height: height,
         width: double.infinity,
         child: CustomPaint(
-          painter: _SparklinePainter(series: series, value: value, color: color, windowMs: windowMs),
+          painter: _SparklinePainter(
+            series: series,
+            value: value,
+            color: color,
+            windowMs: windowMs,
+          ),
         ),
       ),
     );
@@ -75,7 +80,8 @@ class _SparklinePainter extends CustomPainter {
     final path = Path();
     for (var i = 0; i < points.length; i++) {
       final x = (points[i].dx - t0) / timeRange * size.width;
-      final y = size.height - (points[i].dy - minV) / range * (size.height - 4) - 2;
+      final y =
+          size.height - (points[i].dy - minV) / range * (size.height - 4) - 2;
       if (i == 0) {
         path.moveTo(x, y);
       } else {
@@ -94,6 +100,8 @@ class _SparklinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SparklinePainter oldDelegate) =>
-      oldDelegate.series != series || oldDelegate.color != color ||
-      oldDelegate.value != value || oldDelegate.windowMs != windowMs;
+      oldDelegate.series != series ||
+      oldDelegate.color != color ||
+      oldDelegate.value != value ||
+      oldDelegate.windowMs != windowMs;
 }
