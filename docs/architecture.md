@@ -91,3 +91,9 @@ Native code exists only where Flutter/plugins expose nothing:
 
 WebRTC itself stays inside `flutter_webrtc`'s native binaries — it is *not*
 reimplemented in Swift/Kotlin.
+
+## Completed application flow
+
+Dashboard → SessionController → local peer adapters → normalization → metrics → classification → sustained findings → timeline/whole-session aggregates. Nested details, events and history routes share the controller. End/background releases native resources and retains an in-memory summary. No additional dependencies or state-management packages were added.
+
+See [webrtc.md](webrtc.md), [stats.md](stats.md), [qos.md](qos.md), [diagnostics.md](diagnostics.md), [platform-bridge.md](platform-bridge.md), [performance.md](performance.md), [privacy.md](privacy.md) and the [decisions](decisions/) directory. Physical-device behavior is distinguished from automated/source verification in verification.md.
