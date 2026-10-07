@@ -28,8 +28,8 @@ class RtcStatsCollector {
     try {
       final reports = await _session.collectStats();
       return StatsCollectionResult(reports: reports);
-    } catch (e) {
-      return StatsCollectionResult(reports: null, error: e.toString());
+    } catch (_) {
+      return const StatsCollectionResult(reports: null, error: 'native stats pull failed');
     }
   }
 }

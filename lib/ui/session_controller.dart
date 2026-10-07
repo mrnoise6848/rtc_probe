@@ -128,13 +128,14 @@ class SessionController extends ChangeNotifier {
       return;
     }
     if (access.deniedKinds.isNotEmpty) {
+      _totalFindingsRaised++;
       _log(RtcSessionEventKind.mediaDenied,
-          'Media denied: ${access.deniedKinds.join(", ")} — falling back to data-channel-only session');
+          'Capture unavailable: ${access.deniedKinds.join(", ")} — using ${access.grant.name}');
       _diagnostics.raiseManual(RtcFinding(
         code: RtcFindingCode.mediaUnavailable,
         severity: RtcSeverity.info,
         title: 'Media unavailable',
-        evidence: 'Permission denied for ${access.deniedKinds.join(", ")}.',
+        evidence: 'Capture failed or permission denied for ${access.deniedKinds.join(", ")}.',
         impact: 'Media metrics will report "Not available"; transport diagnostics remain valid.',
         firstDetectedMs: 0,
       ));
