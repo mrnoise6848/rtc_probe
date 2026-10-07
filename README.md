@@ -1,64 +1,54 @@
 # RTCProbe
 
-**Explain WebRTC degradation from measured statistics, with missing evidence kept visible.**
+**Turn WebRTC stats into a diagnosis you can follow.**
 
-A peer connection can report “connected” while media stutters. Cumulative counters alone are also easy to misread: a stream reset can look like a bitrate spike, missing RTP fields can look like zero loss, and a single bad sample can become an overconfident diagnosis.
+“Connected” tells you that a peer connection exists. It does not explain stalled video, rising jitter or changing bitrate. Even the raw statistics need interpretation: counters accumulate, streams reset and different native implementations expose different fields.
 
-RTCProbe turns native WebRTC reports into normalized metrics, interval deltas and sustained findings. Its current probe and mirror run on the same device, making the diagnostics workflow reproducible without a signaling service. **This is a local WebRTC-stack lab, not an internet-quality test.**
+RTCProbe is a Flutter lab that connects native WebRTC measurements to timelines, quality assessments and sustained findings. Its probe and mirror run on the same device, providing a repeatable local transport experiment without a signaling server. It measures that local stack, not internet quality.
+
+## Watch a real interruption become a finding
 
 <p align="center">
-  <img src="docs/media/probe-demo.gif" width="360" alt="Actual Android transport-only snapshots: connected probe, mirror interruption, diagnostic finding, fresh restart and session summary">
+  <img src="docs/media/probe-demo.gif" width="360" alt="Android probe connects, detects a mirror interruption, reports a finding, restarts and displays a summary">
 </p>
 
-*Existing Android integration captures, animated as five screens—not a continuous recording. The run uses real transport and shows interruption/restart; it contains no camera-media or WAN performance evidence. Playback duration does not represent failure-detection timing.*
-
-## From reports to an explanation
-
-```text
-Local probe ↔ local mirror (real native ICE / DTLS, optional RTP)
-    → getStats at 1 Hz → normalize fields and units
-    → counter deltas with identity/reset checks
-    → current quality + sustained diagnostic conditions
-    → bounded timeline, event history and whole-session summary
-```
-
-Native connection callbacks establish state. Dart adapters hide plugin report types; widgets consume domain measurements. The selected ICE pair supplies transport RTT, with remote RTCP RTT fallback where available. Native Kotlin/Swift bridges add network context separately: the device's default network context is not proof of the selected ICE path. See [architecture](docs/architecture.md) and [platform boundaries](docs/platform-bridge.md).
-
-## Measurement decisions that prevent misleading charts
-
-| Boundary | Implemented treatment |
-|---|---|
-| First sample or invalid interval | Rates remain unavailable until comparable counters exist |
-| Stream identity change or decreasing counters | Do not turn resets into artificial bitrate/loss values |
-| Absent/non-finite fields | Keep null and display “Not available” |
-| Bitrate | Delta bytes × 8 / elapsed milliseconds, in kbps |
-| Interval inbound loss | Delta lost / (delta received + delta lost), across measurable streams |
-| Session loss summary | Mean of available interval percentages, not a packet-weighted whole-session loss ratio |
-
-FPS uses the reported rate or a frame-count delta fallback. Data-channel counters stay separate from RTP media metrics. The supported shape is one audio/video stream per direction, not simulcast or multi-peer aggregation. Source: [metrics calculator](lib/rtc/metrics_calculator.dart); [field mappings](docs/stats.md).
-
-## Quality changes and findings have different timing
-
-Quality uses the worst available RTT, jitter or interval-loss classification; no inputs yields Unknown. Native disconnection/failure overrides live quality to Critical. Thresholds are project defaults, not universal call-quality standards.
-
-Findings normally require three consecutive samples, with three healthy samples to clear; video-frame stalls require five. Missing measurements reset the streak rather than manufacturing evidence. Findings expose observed values and possible impact, not a certain network root cause. See [diagnostic engine](lib/rtc/diagnostic_engine.dart), [thresholds](docs/qos.md) and [rules](docs/diagnostics.md).
-
-Sampling avoids overlapping requests. Charts retain 600 samples and show the last 60 seconds by default; event history retains 200 entries. Whole-session aggregates continue independently of the chart window. These are resource bounds, not measured CPU/battery results.
-
-## Reproduce the visible failure
+*Five actual Android transport-only integration captures. The animation shows connection, interruption, diagnosis, fresh restart and summary; frame duration is illustrative, not measured recovery time.*
 
 ```sh
 flutter pub get
 flutter run
 ```
 
-Choose Transport-only, Start and wait for Connected. Inspect details, disconnect the mirror and wait for the native interruption finding. Restart creates a fresh session; End keeps a summary in memory.
+Choose Transport-only and Start. Inspect the details, disconnect the mirror and wait for native state changes to produce a finding. Restart opens a new session; End keeps the summary in memory. [Demo walkthrough](docs/demo.md)
 
-In Capture mode, grant camera/microphone access and inspect actual media statistics. Encoder caps and video pause modify native behavior, but a cap does not guarantee a finding and disabled tracks may send black frames. Loopback can survive airplane mode; it cannot establish WAN loss or congestion. See [demo steps](docs/demo.md).
+## A counter is not yet a rate
 
-## Evidence already present—and missing
+```text
+Native getStats → normalized snapshot → comparable counter deltas
+    → current quality → sustained findings → timeline and summary
+```
 
-The [verification record](docs/verification.md) reports 28 passing unit/widget tests, successful Android/iOS-simulator debug builds and native transport/dashboard integration on Android A063 and an iPhone simulator. Tests cover resets, missing fields, thresholds, sustained findings, bounded history, lifecycle handling and fresh-session restart. These are recorded results, not checks rerun in this documentation pass.
+The [metrics calculator](lib/rtc/metrics_calculator.dart) derives bitrate from byte deltas over elapsed time. First samples, invalid intervals and reset stream identities cannot supply a meaningful rate, so the UI keeps those values unavailable instead of drawing a spike.
+
+Inbound loss uses lost/received deltas across measurable streams. FPS uses a native rate or encoded-frame delta fallback. RTT comes from the selected candidate pair, with remote RTCP fallback where available. Data-channel counters remain separate from media statistics. [Field mappings and formulas](docs/stats.md)
+
+These choices also shape summaries: session loss is the mean of available interval percentages, not a packet-weighted total. Missing media fields in a transport-only run remain **Not available**.
+
+## Separate a bad sample from a persistent condition
+
+Current quality uses the worst available RTT, jitter or loss grade. Findings normally require three consecutive samples, then three healthy samples to clear; stalled video frames require five. The finding includes the observed evidence and possible impact.
+
+Native disconnection/failure overrides live quality to Critical. Project thresholds make decisions reproducible, while context remains essential: a low bitrate can reflect a static scene, and good local RTT says nothing about an internet route. [Diagnostic rules](docs/diagnostics.md) · [Quality thresholds](docs/qos.md)
+
+## Native transport, bounded Flutter state
+
+`flutter_webrtc` owns the native peer connections. Dart adapters normalize plugin data; ChangeNotifier coordinates the session and widgets consume domain models. Kotlin and Swift provide platform network context separately from the selected ICE path.
+
+Sampling runs at 1 Hz without overlapping requests. Charts retain 600 samples and initially display 60 seconds; events retain 200 entries. Whole-session aggregates continue outside that rolling window. End/background releases the session through lifecycle handling. [Architecture](docs/architecture.md) · [Native bridge](docs/platform-bridge.md) · [Lifecycle](docs/lifecycle.md)
+
+## Verified transport; capture experiments next
+
+The [verification record](docs/verification.md) reports **28 passing unit/widget tests**, Android/iOS-simulator debug builds, and native transport/dashboard integration on Android A063 and an iPhone simulator. Coverage includes counter resets, unavailable fields, sustained findings, bounded history, interruption and restart.
 
 ```sh
 flutter test
@@ -67,10 +57,6 @@ flutter test integration_test/local_session_test.dart -d DEVICE_ID
 flutter drive --driver=test_driver/integration_driver.dart --target=integration_test/dashboard_session_test.dart -d DEVICE_ID
 ```
 
-Run native targets sequentially. Camera/microphone capture, real media RTT/jitter/loss/bitrate/FPS, encoder controls, physical iOS behavior and actual OS backgrounding during capture remain unvalidated. A capture-enabled session with its summary is the next useful visual evidence.
+Run device targets sequentially. Capture mode and encoder controls are implemented, but real camera/microphone metrics, permission flows, physical iOS and OS backgrounding during capture still need device validation. Caps may be rejected by the platform, and a paused video track may send black frames rather than produce zero FPS.
 
-## Scope and privacy
-
-There is no remote peer, application backend, STUN/TURN configuration, analytics or media persistence. Diagnostics remain in memory. End/background releases session resources through lifecycle handling. The source review is not a packet-capture audit or proof of every device's native cleanup behavior. See [privacy](docs/privacy.md) and [lifecycle](docs/lifecycle.md).
-
-A controlled remote peer, packet-weighted session loss and release resource profiling remain future work. Native stats and encoder support vary by platform; the pinned plugin's future toolchain compatibility is an existing maintenance concern documented in verification.
+The current scope is one audio/video stream per direction. A controlled remote peer, packet-weighted session loss and release resource profiling are future extensions. No STUN/TURN service, remote peer, analytics or media persistence is configured; diagnostics remain in memory. [Privacy](docs/privacy.md)
