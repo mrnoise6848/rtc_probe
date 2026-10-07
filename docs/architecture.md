@@ -38,7 +38,7 @@ version changes are required by RTCProbe.
 └─────────────────────────────────────────────┘
 ```
 
-The UI never sees plugin classes. `flutter_webrtc` types are confined to the
+The UI never sees plugin classes; no local media preview is required. `flutter_webrtc` types are confined to the
 engine adapter; the adapter emits normalized domain snapshots
 (`RtcStatsSnapshot`) consumed by the sampler/analyzer.
 
@@ -50,7 +50,7 @@ engine adapter; the adapter emits normalized domain snapshots
 - **Session topology**: *local test peer* — two `RTCPeerConnection`s
   (`probe` ↔ `mirror`) inside the app process. SDP offers/answers and ICE
   candidates are exchanged through direct in-process calls
-  (`LoopbackSignaling`). No server, deterministic, reproducible.
+  (`LoopbackSignaling`). No server; negotiation is reproducible, timing and measured quality are device-dependent.
 - **Media**: real captured audio/video tracks (`getUserMedia`) sent from
   `probe` to `mirror`, so inbound+outbound RTP streams, ICE, DTLS and SRTP all
   execute for real on the device network stack. If camera/mic permission is
@@ -78,8 +78,8 @@ engine adapter; the adapter emits normalized domain snapshots
 - A rule-based diagnostic engine converts sustained threshold violations into
   `RtcFinding`s (finding + evidence + likely impact), using hedged language
   (suggests/likely/possible).
-- A bounded timeline (ring buffer, 10 min @ 1 Hz) feeds the charts and the
-  session summary.
+- A bounded timeline (600-point list, 10 min @ 1 Hz) feeds charts; constant-memory
+  accumulators retain the entire session summary independently of chart eviction.
 
 ## 6. Native Bridge Strategy
 
@@ -87,7 +87,7 @@ Native code exists only where Flutter/plugins expose nothing:
 
 | Capability | iOS (Swift) | Android (Kotlin) |
 |---|---|---|
-| Network path (wifi/cellular/ethernet/none, expensive, constrained) | `NWPathMonitor` | `ConnectivityManager.NetworkCallback` |
+| Network path (wifi/cellular/ethernet/none, expensive, constrained) | `NWPathMonitor` | `ConnectivityManager` snapshot |
 
 WebRTC itself stays inside `flutter_webrtc`'s native binaries — it is *not*
 reimplemented in Swift/Kotlin.
