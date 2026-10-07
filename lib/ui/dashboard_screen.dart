@@ -4,6 +4,7 @@ import 'package:rtc_probe/ui/format.dart';
 import 'package:rtc_probe/ui/details_screen.dart';
 import 'package:rtc_probe/ui/events_screen.dart';
 import 'package:rtc_probe/ui/failure_controls.dart';
+import 'package:rtc_probe/ui/summary_card.dart';
 import 'package:rtc_probe/ui/session_controller.dart';
 import 'package:rtc_probe/ui/sparkline.dart';
 
@@ -104,6 +105,7 @@ class _IdleView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (controller.summary != null) SummaryCard(summary: controller.summary!),
         Text(
           'Why is a realtime connection performing badly?',
           style: Theme.of(context).textTheme.headlineSmall,

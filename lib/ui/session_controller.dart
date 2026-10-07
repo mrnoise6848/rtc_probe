@@ -43,6 +43,7 @@ class SessionController extends ChangeNotifier {
   RtcStatsSnapshot? _previousSnapshot;
 
   final RtcTimeline _timeline = RtcTimeline();
+  RtcSummaryAccumulator _aggregates = RtcSummaryAccumulator();
   final List<RtcSessionEvent> _events = <RtcSessionEvent>[];
   static const int _maxEvents = 200;
 
@@ -159,10 +160,9 @@ class SessionController extends ChangeNotifier {
     }
     await session?.close();
 
-    _summary = summarizeSession(
+    _summary = _aggregates.finish(
       startedAt: _sessionModel?.startedAt ?? DateTime.now(),
-      durationMs: _timeline.last?.elapsedMs ?? 0,
-      points: _timeline.points,
+      durationMs: _sessionModel?.endedAt?.difference(_sessionModel!.startedAt).inMilliseconds ?? 0,
       findingsCount: _totalFindingsRaised,
     );
     _phase = RtcSessionPhase.ended;
@@ -181,6 +181,7 @@ class SessionController extends ChangeNotifier {
 
   void _resetSessionState() {
     _timeline.clear();
+    _aggregates = RtcSummaryAccumulator();
     _diagnostics.reset();
     _events.clear();
     _totalFindingsRaised = 0;
@@ -253,7 +254,7 @@ class SessionController extends ChangeNotifier {
       _log(RtcSessionEventKind.findingCleared, 'Resolved: ${cleared.title}');
     }
 
-    _timeline.push(RtcTimelinePoint(
+    final point = RtcTimelinePoint(
       elapsedMs: snapshot.elapsedMs,
       rttMs: metrics.rttMs,
       jitterMs: metrics.jitterMs,
@@ -262,7 +263,9 @@ class SessionController extends ChangeNotifier {
       recvBitrateKbps: metrics.recvBitrateKbps,
       videoFps: metrics.videoFps,
       level: quality.level,
-    ));
+    );
+    _timeline.push(point);
+    _aggregates.add(point);
 
     notifyListeners();
   }

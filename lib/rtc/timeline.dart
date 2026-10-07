@@ -74,3 +74,45 @@ RtcSessionSummary summarizeSession({
     findingsCount: findingsCount,
   );
 }
+
+/// Constant-memory aggregates over the entire session, independent of chart eviction.
+class RtcSummaryAccumulator {
+  final _rtt = _Aggregate();
+  final _jitter = _Aggregate();
+  final _loss = _Aggregate();
+  final _send = _Aggregate();
+  final _recv = _Aggregate();
+  int _count = 0;
+  RtcQualityLevel _worst = RtcQualityLevel.unknown;
+
+  void add(RtcTimelinePoint point) {
+    _count++;
+    _rtt.add(point.rttMs);
+    _jitter.add(point.jitterMs);
+    _loss.add(point.packetLossPercent);
+    _send.add(point.sendBitrateKbps);
+    _recv.add(point.recvBitrateKbps);
+    if (point.level.index > _worst.index) _worst = point.level;
+  }
+
+  RtcSessionSummary finish({required DateTime startedAt, required int durationMs, required int findingsCount}) => RtcSessionSummary(
+    startedAt: startedAt, durationMs: durationMs, sampleCount: _count,
+    avgRttMs: _rtt.average, peakRttMs: _rtt.peak, peakJitterMs: _jitter.peak,
+    avgLossPercent: _loss.average, peakLossPercent: _loss.peak,
+    avgSendKbps: _send.average, avgRecvKbps: _recv.average,
+    worstLevel: _worst, findingsCount: findingsCount,
+  );
+}
+
+class _Aggregate {
+  double _sum = 0;
+  int _count = 0;
+  double? peak;
+  double? get average => _count == 0 ? null : _sum / _count;
+  void add(double? value) {
+    if (value == null || !value.isFinite) return;
+    _sum += value;
+    _count++;
+    if (peak == null || value > peak!) peak = value;
+  }
+}
