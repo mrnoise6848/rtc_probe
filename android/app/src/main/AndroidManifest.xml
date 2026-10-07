@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Requested contextually by RTCProbe when a session starts; the
+         plugin's getUserMedia triggers the runtime dialog. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="rtc_probe"
         android:name="${applicationName}"
