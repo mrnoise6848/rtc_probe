@@ -91,6 +91,7 @@ class SessionController extends ChangeNotifier {
   bool get hasVideoGrant => _sessionModel?.mediaGrant == RtcMediaGrant.audioVideo;
   List<RtcFinding> get findings => _diagnostics.activeFindings;
   List<RtcTimelinePoint> get timelinePoints => _timeline.trailing(60000);
+  List<RtcTimelinePoint> get historyPoints => _timeline.points;
   List<RtcSessionEvent> get events => List.unmodifiable(_events);
 
   // ---- Session lifecycle -------------------------------------------------

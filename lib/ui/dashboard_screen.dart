@@ -5,6 +5,7 @@ import 'package:rtc_probe/ui/details_screen.dart';
 import 'package:rtc_probe/ui/events_screen.dart';
 import 'package:rtc_probe/ui/failure_controls.dart';
 import 'package:rtc_probe/ui/summary_card.dart';
+import 'package:rtc_probe/ui/history_screen.dart';
 import 'package:rtc_probe/ui/session_controller.dart';
 import 'package:rtc_probe/ui/sparkline.dart';
 
@@ -51,7 +52,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
             actions: [
               IconButton(tooltip: 'Detailed metrics', icon: const Icon(Icons.analytics_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DetailsScreen(controller: _controller)))),
               IconButton(tooltip: 'Session events', icon: const Icon(Icons.history), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => EventsScreen(controller: _controller)))),
-              _NetworkChip(controller: _controller),
+              IconButton(tooltip: 'Inspect metric history', icon: const Icon(Icons.timeline), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => HistoryScreen(controller: _controller)))),
               const SizedBox(width: 8),
             ],
           ),
@@ -114,7 +115,8 @@ class _IdleView extends StatelessWidget {
         Text(
           'RTCProbe establishes a real WebRTC loopback session on this device '
           '(local probe ↔ mirror peer, no server), samples live statistics and '
-          'explains degradation.',
+          'explains degradation. Camera and microphone are requested only on Start. '
+          'Capture stays on this device. Local loopback does not measure Internet quality.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: 16),
@@ -138,6 +140,7 @@ class _LiveView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       children: [
+        Align(alignment: Alignment.centerLeft, child: _NetworkChip(controller: controller)),
         _StatusHeader(controller: controller),
         const SizedBox(height: 12),
         _MetricGrid(controller: controller),
@@ -237,29 +240,22 @@ class _MetricGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = controller.metrics;
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: _MetricCard(label: 'RTT', value: msLabel(m.rttMs))),
-            const SizedBox(width: 8),
-            Expanded(child: _MetricCard(label: 'Jitter', value: msLabel(m.jitterMs))),
-            const SizedBox(width: 8),
-            Expanded(child: _MetricCard(label: 'Packet Loss', value: percentLabel(m.packetLossPercent))),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _MetricCard(label: 'Send Bitrate', value: kbpsLabel(m.sendBitrateKbps))),
-            const SizedBox(width: 8),
-            Expanded(child: _MetricCard(label: 'Recv Bitrate', value: kbpsLabel(m.recvBitrateKbps))),
-            const SizedBox(width: 8),
-            Expanded(child: _MetricCard(label: 'Video FPS', value: fpsLabel(m.videoFps))),
-          ],
-        ),
-      ],
-    );
+    final entries = <(String, String)>[
+      ('Round-trip time', msLabel(m.rttMs)),
+      ('Jitter', msLabel(m.jitterMs)),
+      ('Packet loss', percentLabel(m.packetLossPercent)),
+      ('Send bitrate', kbpsLabel(m.sendBitrateKbps)),
+      ('Receive bitrate', kbpsLabel(m.recvBitrateKbps)),
+      ('Video frames / second', fpsLabel(m.videoFps)),
+    ];
+    return LayoutBuilder(builder: (context, constraints) {
+      final scale = MediaQuery.textScalerOf(context).scale(1);
+      final columns = constraints.maxWidth >= 600 && scale <= 1.3 ? 3 : (scale > 1.5 ? 1 : 2);
+      final width = (constraints.maxWidth - (columns - 1) * 8) / columns;
+      return Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final entry in entries) SizedBox(width: width, child: _MetricCard(label: entry.$1, value: entry.$2)),
+      ]);
+    });
   }
 }
 
@@ -284,7 +280,7 @@ class _MetricCard extends StatelessWidget {
               Text(label, style: Theme.of(context).textTheme.labelSmall, textAlign: TextAlign.center),
               const SizedBox(height: 6),
               Text(
-                unavailable ? 'N/A' : value,
+                unavailable ? 'Not available' : value,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: unavailable ? scheme.outline : null,
                       fontWeight: FontWeight.bold,
@@ -308,7 +304,7 @@ class _TimelineCard extends StatefulWidget {
   State<_TimelineCard> createState() => _TimelineCardState();
 }
 
-enum _TimelineMetric { rtt, jitter, loss, sendBitrate }
+enum _TimelineMetric { rtt, jitter, loss, sendBitrate, fps }
 
 class _TimelineCardState extends State<_TimelineCard> {
   _TimelineMetric _selected = _TimelineMetric.rtt;
@@ -322,6 +318,7 @@ class _TimelineCardState extends State<_TimelineCard> {
       _TimelineMetric.jitter => 'Jitter (ms)',
       _TimelineMetric.loss => 'Packet loss (%)',
       _TimelineMetric.sendBitrate => 'Send bitrate (kbps)',
+      _TimelineMetric.fps => 'Video frames / second',
     };
     return Card(
       child: Padding(
@@ -341,6 +338,7 @@ class _TimelineCardState extends State<_TimelineCard> {
                 _TimelineMetric.jitter => (p) => p.jitterMs,
                 _TimelineMetric.loss => (p) => p.packetLossPercent,
                 _TimelineMetric.sendBitrate => (p) => p.sendBitrateKbps,
+                _TimelineMetric.fps => (p) => p.videoFps,
               },
             ),
             const SizedBox(height: 8),
@@ -354,6 +352,7 @@ class _TimelineCardState extends State<_TimelineCard> {
                       _TimelineMetric.jitter => 'Jitter',
                       _TimelineMetric.loss => 'Loss',
                       _TimelineMetric.sendBitrate => 'Bitrate',
+                      _TimelineMetric.fps => 'FPS',
                     }),
                     selected: _selected == metric,
                     onSelected: (_) => setState(() => _selected = metric),
