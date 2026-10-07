@@ -2,7 +2,7 @@
 
 WebRTC runs through flutter_webrtc 1.6.2+hotfix.4 and its native binaries. Dart adapters own peers, local SDP/ICE exchange, capture, raw reports and normalization. UI/analysis only receive RTCProbe domain models; no plugin classes cross into widgets.
 
-The only custom MethodChannel is `rtc_probe/network_info` → `getCurrentPath`. It returns interfaceType, isExpensive, isConstrained and source; no IP address, SSID, SDP or credentials. Swift uses Network.NWPathMonitor in AppDelegate; Kotlin reads ConnectivityManager in MainActivity. This is device network context, not evidence of the selected ICE interface. The monitor is process-scoped and started once; there is no per-sample bridge call.
+The custom MethodChannel is `rtc_probe/network_info` with `getCurrentPath` and `setProbeActive`. It returns interfaceType, isExpensive, isConstrained and source; no IP address, SSID, SDP or credentials. Swift uses Network.NWPathMonitor in AppDelegate; Kotlin reads ConnectivityManager in MainActivity. This is device network context, not evidence of the selected ICE interface. The monitor is process-scoped and started once; there is no per-sample bridge call.
 
 | Behavior | iOS | Android |
 |---|---|---|
@@ -15,3 +15,5 @@ The only custom MethodChannel is `rtc_probe/network_info` → `getCurrentPath`. 
 | Background | Session explicitly ends, no background capture | Session explicitly ends |
 
 Permissions/capture errors may reflect denial, hardware absence or capture contention; the app cannot reliably distinguish every native error. Camera/video-only fallback is intentionally not implemented. Native controls and actual ICE recovery must be checked on physical devices. SDK and application IDs are preserved.
+
+`setProbeActive` prevents display auto-lock during an active probe using iOS isIdleTimerDisabled / Android FLAG_KEEP_SCREEN_ON, and restores it on end/background/failure. It does not acquire a background CPU wake lock or change global device settings.

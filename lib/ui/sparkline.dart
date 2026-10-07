@@ -60,30 +60,40 @@ class _SparklinePainter extends CustomPainter {
 
     final last = series.last.elapsedMs;
     final cutoff = last - windowMs;
-    final points = <Offset>[];
+    final points = <Offset?>[];
     double? minV, maxV;
     for (final p in series) {
       if (p.elapsedMs < cutoff) continue;
       final v = value(p);
-      if (v == null || v.isNaN) continue;
+      if (v == null || !v.isFinite) {
+        points.add(null);
+        continue;
+      }
       minV = minV == null || v < minV ? v : minV;
       maxV = maxV == null || v > maxV ? v : maxV;
       points.add(Offset(p.elapsedMs.toDouble(), v));
     }
     if (points.length < 2 || minV == null || maxV == null) return;
 
-    final range = (maxV! - minV!) == 0 ? 1.0 : maxV - minV;
-    final t0 = points.first.dx;
-    final t1 = points.last.dx;
+    final range = (maxV - minV) == 0 ? 1.0 : maxV - minV;
+    final available = points.whereType<Offset>().toList();
+    if (available.length < 2) return;
+    final t0 = available.first.dx;
+    final t1 = available.last.dx;
     final timeRange = (t1 - t0) == 0 ? 1.0 : t1 - t0;
 
     final path = Path();
-    for (var i = 0; i < points.length; i++) {
-      final x = (points[i].dx - t0) / timeRange * size.width;
-      final y =
-          size.height - (points[i].dy - minV) / range * (size.height - 4) - 2;
-      if (i == 0) {
+    var drawing = false;
+    for (final point in points) {
+      if (point == null) {
+        drawing = false;
+        continue;
+      }
+      final x = (point.dx - t0) / timeRange * size.width;
+      final y = size.height - (point.dy - minV) / range * (size.height - 4) - 2;
+      if (!drawing) {
         path.moveTo(x, y);
+        drawing = true;
       } else {
         path.lineTo(x, y);
       }

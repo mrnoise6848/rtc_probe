@@ -5,3 +5,5 @@ A background/hidden/detached app ends its session; foreground requires a new con
 Start/end are serialized. A generation token rejects asynchronous permission/setup results after cancellation; any returned capture/session is cleaned. State callbacks retain their latest value so transitions during negotiation are not falsely replaced by an idle UI. Sampling ignores results from old sessions. Durations/delta intervals use a monotonic stopwatch.
 
 Setup failure closes partially created peers, capture tracks and streams. End cancels sampling/subscriptions, closes data channel, capture, peers and broadcast streams. Restoring permissions in system settings takes effect on the next session. No background audio entitlement is used.
+
+An active probe prevents display auto-lock only within the app; teardown/failure restores it. A user can still explicitly background/lock the device, which ends the session. Transport-only mode skips capture entirely.

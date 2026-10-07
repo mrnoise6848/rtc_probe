@@ -49,9 +49,11 @@ flutter pub get
 flutter run
 ```
 
-Start → allow capture (or use fallback) → observe live metrics → cap video bitrate → observe findings → remove cap → observe recovery → End → summary. Disconnecting the mirror demonstrates native transport failure; Restart opens a fresh run. [Step-by-step demo](docs/demo.md).
+Start → choose capture or transport-only mode (or use permission fallback) → observe live metrics → cap video bitrate → observe findings → remove cap → observe recovery → End → summary. Disconnecting the mirror demonstrates native transport failure; Restart opens a fresh run. [Step-by-step demo](docs/demo.md).
 
-A real-device recording/GIF should be captured using that procedure once device validation is complete; no fabricated demo recording is included. Check [verification status](docs/verification.md) before treating device behavior as validated.
+![Real Android transport probe: connected, interrupted, diagnosis, restarted, summary](docs/media/probe-demo.gif)
+
+Animated snapshots from the actual Android integration run, in transport-only mode. They show real ICE interruption and a fresh-session recovery; unavailable media metrics stay labeled. This is a sequence of captured screens, not a continuous media recording. [Verification status](docs/verification.md) records exactly what was exercised.
 
 ## Performance
 
@@ -72,8 +74,8 @@ No backend, remote peer, STUN/TURN, analytics, media persistence or hardcoded se
 
 ## Verification
 
-After all implementation phases: `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`, `flutter build apk --debug`, and `flutter build ios --simulator --debug` where tooling is installed. [Results and manual checklist](docs/verification.md).
+After all implementation phases: `dart format --output=none --set-exit-if-changed lib test`, `flutter analyze`, `flutter test`, `flutter test integration_test/local_session_test.dart -d DEVICE_ID`, `flutter build apk --debug`, and `flutter build ios --simulator --debug` where tooling is installed. [Results and manual checklist](docs/verification.md).
 
 ## Roadmap
 
-A controlled remote peer, packet-weighted session loss, physical-device demo recording and measured release profiling are future extensions. They are not implied by loopback results.
+A controlled remote peer, packet-weighted session loss, real media capture validation and measured release profiling are future extensions. They are not implied by loopback results.

@@ -21,9 +21,12 @@ import UIKit
     bridge.start()
     FlutterMethodChannel(
       name: "rtc_probe/network_info",
-      binaryMessenger: engineBridge.applicationRegistrar.binaryMessenger
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
     ).setMethodCallHandler { call, result in
       switch call.method {
+      case "setProbeActive":
+        UIApplication.shared.isIdleTimerDisabled = (call.arguments as? Bool) ?? false
+        result(nil)
       case "getCurrentPath":
         result(bridge.snapshot)
       default:

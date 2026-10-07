@@ -64,3 +64,20 @@ class MediaAccess {
     );
   }
 }
+
+/// Best-effort teardown must attempt every track even if one native call fails.
+Future<void> releaseMedia(MediaStream? stream) async {
+  if (stream == null) return;
+  for (final track in stream.getTracks()) {
+    try {
+      await track.stop();
+    } catch (_) {
+      /* Continue releasing other tracks. */
+    }
+  }
+  try {
+    await stream.dispose();
+  } catch (_) {
+    /* Stream may already be gone. */
+  }
+}

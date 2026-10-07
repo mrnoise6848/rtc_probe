@@ -13,10 +13,11 @@ class EventsScreen extends StatelessWidget {
       listenable: controller,
       builder: (context, _) {
         final events = controller.events.reversed.toList(growable: false);
-        if (events.isEmpty)
+        if (events.isEmpty) {
           return const Center(
             child: Text('Start a session to collect events.'),
           );
+        }
         return ListView.builder(
           itemCount: events.length,
           itemBuilder: (context, index) {

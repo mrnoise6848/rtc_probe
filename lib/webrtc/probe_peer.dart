@@ -37,7 +37,7 @@ class ProbePeer {
     // leaves the device, so host candidates are sufficient and no third-party
     // server is contacted (see docs/decisions/002-webrtc-library-choice.md).
     const config = <String, dynamic>{
-      'iceServers': <String, dynamic>[],
+      'iceServers': <Map<String, dynamic>>[],
       'sdpSemantics': 'unified-plan',
     };
     final pc = await createPeerConnection(config);
@@ -69,8 +69,11 @@ class ProbePeer {
   }
 
   Future<void> addRemoteCandidate(RTCIceCandidate candidate) async {
-    if (_closed || candidate.candidate == null || candidate.candidate!.isEmpty)
+    if (_closed ||
+        candidate.candidate == null ||
+        candidate.candidate!.isEmpty) {
       return;
+    }
     if (_remoteDescriptionSet) {
       try {
         await _pc.addCandidate(candidate);

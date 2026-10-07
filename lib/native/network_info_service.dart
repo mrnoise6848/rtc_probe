@@ -11,6 +11,17 @@ class NetworkInfoService {
 
   const NetworkInfoService();
 
+  /// Keeps the diagnostics display awake only while a probe is active.
+  Future<void> setProbeActive(bool active) async {
+    try {
+      await _channel.invokeMethod<void>('setProbeActive', active);
+    } on PlatformException {
+      // Unsupported platforms still retain transport diagnostics.
+    } on MissingPluginException {
+      // Widget tests and unsupported targets have no native bridge.
+    }
+  }
+
   Future<NetworkPathInfo> current() async {
     try {
       final map = await _channel.invokeMethod<Map<dynamic, dynamic>>(

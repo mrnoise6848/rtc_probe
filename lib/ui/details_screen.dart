@@ -15,7 +15,8 @@ class DetailsScreen extends StatelessWidget {
         final s = controller.snapshot;
         final m = controller.metrics;
         final rows = <(String, String)>[
-          ('Connection', controller.connectionState.name),
+          ('Session', controller.phase.name),
+          ('Last reported connection', controller.connectionState.name),
           ('ICE', controller.iceState.name),
           (
             'Media capture',

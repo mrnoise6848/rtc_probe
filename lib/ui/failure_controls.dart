@@ -46,7 +46,7 @@ class _FailureControlsState extends State<FailureControls> {
                           final ok = await c.applyBitrateCapKbps(
                             c.appliedBitrateCapKbps == null ? 64 : null,
                           );
-                          if (!ok && context.mounted)
+                          if (!ok && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -54,6 +54,7 @@ class _FailureControlsState extends State<FailureControls> {
                                 ),
                               ),
                             );
+                          }
                         }),
                   child: Text(
                     c.appliedBitrateCapKbps == null

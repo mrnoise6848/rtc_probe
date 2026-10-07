@@ -2,6 +2,7 @@ package com.example.rtc_probe
 
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -16,6 +17,14 @@ class MainActivity : FlutterActivity() {
         MethodChannel(engine.dartExecutor.binaryMessenger, "rtc_probe/network_info")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "setProbeActive" -> {
+                        if (call.arguments == true) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                        result.success(null)
+                    }
                     "getCurrentPath" -> result.success(readNetworkPath())
                     else -> result.notImplemented()
                 }

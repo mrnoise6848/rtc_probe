@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:rtc_probe/ui/dashboard_screen.dart';
+import 'package:rtc_probe/ui/session_controller.dart';
 
 void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.controller});
+  final SessionController? controller;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -19,6 +21,6 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
     ),
-    home: const DashboardScreen(),
+    home: DashboardScreen(controller: controller),
   );
 }

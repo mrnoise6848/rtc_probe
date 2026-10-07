@@ -4,7 +4,7 @@
 
 | Item | Value |
 |---|---|
-| Flutter | 3.47.4 stable (engine revision 9584c6713b) |
+| Flutter | 3.47.4 stable (framework revision 9584c6713b) |
 | Dart SDK | ^3.13.3 |
 | Template | Fresh `flutter create` counter app (`lib/main.dart` only) |
 | State management | None beyond `setState` — kept, extended with `ChangeNotifier` |
@@ -94,6 +94,6 @@ reimplemented in Swift/Kotlin.
 
 ## Completed application flow
 
-Dashboard → SessionController → local peer adapters → normalization → metrics → classification → sustained findings → timeline/whole-session aggregates. Nested details, events and history routes share the controller. End/background releases native resources and retains an in-memory summary. No additional dependencies or state-management packages were added.
+Dashboard → SessionController → local peer adapters → normalization → metrics → classification → sustained findings → timeline/whole-session aggregates. Nested details, events and history routes share the controller. End/background releases native resources and retains an in-memory summary. No additional production or state-management dependencies were added; SDK integration_test tooling verifies native behavior.
 
 See [webrtc.md](webrtc.md), [stats.md](stats.md), [qos.md](qos.md), [diagnostics.md](diagnostics.md), [platform-bridge.md](platform-bridge.md), [performance.md](performance.md), [privacy.md](privacy.md) and the [decisions](decisions/) directory. Physical-device behavior is distinguished from automated/source verification in verification.md.

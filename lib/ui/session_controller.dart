@@ -22,10 +22,19 @@ import 'package:rtc_probe/webrtc/stats_normalizer.dart';
 class SessionController extends ChangeNotifier {
   SessionController({
     this.samplingInterval = const Duration(seconds: 1),
+    this.captureRequested = true,
     NetworkInfoService? networkInfoService,
   }) : _networkInfo = networkInfoService ?? const NetworkInfoService();
 
   final Duration samplingInterval;
+  bool captureRequested;
+
+  void setCaptureRequested(bool requested) {
+    if (isLive) return;
+    captureRequested = requested;
+    notifyListeners();
+  }
+
   final NetworkInfoService _networkInfo;
 
   // Pipeline components (pure Dart, stateless except engine/timeline).
@@ -123,6 +132,8 @@ class SessionController extends ChangeNotifier {
     );
     notifyListeners();
 
+    await _networkInfo.setProbeActive(true);
+    if (!_valid(generation)) return;
     _networkPath = await _networkInfo.current();
     if (!_valid(generation)) return;
     _log(
@@ -133,12 +144,15 @@ class SessionController extends ChangeNotifier {
     );
 
     // Contextual permission request with graceful degradation.
-    final access = await const MediaAccess().acquire();
+    final access = captureRequested
+        ? await const MediaAccess().acquire()
+        : const MediaAccessResult(
+            stream: null,
+            grant: RtcMediaGrant.none,
+            deniedKinds: [],
+          );
     if (!_valid(generation)) {
-      for (final track in access.stream?.getTracks() ?? []) {
-        await track.stop();
-      }
-      await access.stream?.dispose();
+      await releaseMedia(access.stream);
       return;
     }
     if (access.deniedKinds.isNotEmpty) {
@@ -169,6 +183,7 @@ class SessionController extends ChangeNotifier {
       _session = session;
     } catch (_) {
       if (!_valid(generation)) return;
+      await _networkInfo.setProbeActive(false);
       _phase = RtcSessionPhase.failed;
       _log(
         RtcSessionEventKind.error,
@@ -221,14 +236,16 @@ class SessionController extends ChangeNotifier {
   }
 
   Future<void> _stop() async {
-    if (_phase != RtcSessionPhase.live && _phase != RtcSessionPhase.starting)
+    if (_phase != RtcSessionPhase.live && _phase != RtcSessionPhase.starting) {
       return;
+    }
     ++_generation;
     _phase = RtcSessionPhase.ended;
     _clock.stop();
     _sampler?.stop();
     _sampler = null;
     await _starting;
+    await _networkInfo.setProbeActive(false);
     await _cancelSubscriptions();
     final session = _session;
     _session = null;
@@ -291,8 +308,11 @@ class SessionController extends ChangeNotifier {
   Future<void> _tick() async {
     final session = _session;
     final collector = _collector;
-    if (session == null || collector == null || _phase != RtcSessionPhase.live)
+    if (session == null ||
+        collector == null ||
+        _phase != RtcSessionPhase.live) {
       return;
+    }
 
     _appRttMs = null;
     session.ping();

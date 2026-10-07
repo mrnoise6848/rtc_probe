@@ -73,8 +73,9 @@ class RtcMetricsCalculator {
           a.ssrc != b.ssrc ||
           a.kind != b.kind ||
           a.bytes == null ||
-          b.bytes == null)
+          b.bytes == null) {
         return null;
+      }
       final delta = a.bytes! - b.bytes!;
       if (delta < 0) return null;
       bytes += delta;
@@ -89,8 +90,9 @@ class RtcMetricsCalculator {
         b == null ||
         a.ssrc != b.ssrc ||
         a.frames == null ||
-        b.frames == null)
+        b.frames == null) {
       return null;
+    }
     final dt = current.elapsedMs - previous!.elapsedMs;
     final frames = a.frames! - b.frames!;
     return dt > 0 && frames >= 0 ? frames * 1000 / dt : null;
@@ -99,8 +101,9 @@ class RtcMetricsCalculator {
   /// Loss ratio over the interval, pooled across inbound audio+video:
   /// lost / (received + lost). Both counters come from real RTP statistics.
   double? _lossPercent(RtcStatsSnapshot current, RtcStatsSnapshot? previous) {
-    if (previous == null || current.elapsedMs <= previous.elapsedMs)
+    if (previous == null || current.elapsedMs <= previous.elapsedMs) {
       return null;
+    }
     var dLost = 0, dReceived = 0;
     var seen = false;
     for (final stream in [current.inboundAudio, current.inboundVideo]) {
@@ -114,8 +117,9 @@ class RtcMetricsCalculator {
       if (lostNow == null ||
           lostPrev == null ||
           recvNow == null ||
-          recvPrev == null)
+          recvPrev == null) {
         continue;
+      }
       final dl = lostNow - lostPrev;
       final dr = recvNow - recvPrev;
       if (dl < 0 || dr < 0) return null; // counter reset
@@ -131,12 +135,13 @@ class RtcMetricsCalculator {
 
   String? _resolution(RtcMediaStreamStats? video) {
     if (video?.width == null || video?.height == null) return null;
-    return '${video!.width}×${video!.height}';
+    return '${video!.width}×${video.height}';
   }
 
   double? _clean(double? value) {
-    if (value == null || value.isNaN || value.isNegative || value > 1e9)
+    if (value == null || value.isNaN || value.isNegative || value > 1e9) {
       return null;
+    }
     return value;
   }
 }

@@ -12,7 +12,10 @@ import 'package:rtc_probe/ui/sparkline.dart';
 /// Main RTCProbe dashboard: connection state, quality, headline metrics,
 /// the bounded timeline, current findings and the local preview.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, this.controller});
+
+  /// An injected controller is owned and disposed by this screen.
+  final SessionController? controller;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -20,7 +23,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen>
     with WidgetsBindingObserver {
-  final SessionController _controller = SessionController();
+  late final SessionController _controller =
+      widget.controller ?? SessionController();
 
   @override
   void initState() {
@@ -106,7 +110,7 @@ class _NetworkChip extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final icon = switch (path.interfaceType) {
       'wifi' => Icons.wifi,
-      'cellular' => Icons.cellular,
+      'cellular' => Icons.signal_cellular_alt,
       'ethernet' => Icons.lan,
       'none' => Icons.signal_wifi_off,
       _ => Icons.help_outline,
@@ -149,6 +153,14 @@ class _IdleView extends StatelessWidget {
               ?.copyWith(color: scheme.onSurfaceVariant),
         ),
         const SizedBox(height: 16),
+        SwitchListTile(
+          title: const Text('Capture camera and microphone'),
+          subtitle: const Text(
+            'Turn off for a transport-only probe without capture permissions.',
+          ),
+          value: controller.captureRequested,
+          onChanged: controller.isLive ? null : controller.setCaptureRequested,
+        ),
         FilledButton.icon(
           onPressed: controller.isLive ? null : controller.start,
           icon: const Icon(Icons.play_arrow),
@@ -220,6 +232,8 @@ class _StatusHeader extends StatelessWidget {
                       Text(
                         controller.phase == RtcSessionPhase.starting
                             ? 'Connecting…'
+                            : controller.phase == RtcSessionPhase.failed
+                            ? 'Startup failed'
                             : controller.connectionState.name,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
@@ -239,7 +253,7 @@ class _StatusHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'Quality',
+                    'Measured quality',
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                   const SizedBox(height: 4),

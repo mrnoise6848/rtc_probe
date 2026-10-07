@@ -185,7 +185,8 @@ class RtcStatsNormalizer {
   String _kind(StatsReport r) {
     final kind =
         r.values['kind']?.toString() ?? r.values['mediaType']?.toString();
-    if (kind == 'audio' || kind == 'video') return kind;
+    if (kind == 'audio') return 'audio';
+    if (kind == 'video') return 'video';
     // Fall back to heuristics on the report id used by some native builds.
     final id = r.id.toLowerCase();
     if (id.contains('audio')) return 'audio';

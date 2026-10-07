@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:rtc_probe/rtc/models.dart';
 import 'package:rtc_probe/webrtc/probe_peer.dart';
+import 'package:rtc_probe/webrtc/media_access.dart';
 
 /// Deterministic in-process signaling for the showcase session.
 ///
@@ -24,11 +25,11 @@ class LoopbackSignaling {
       unawaited(a.addRemoteCandidate(candidate).catchError((Object _) {}));
     };
 
-    final offer = await a.pc.createOffer(null);
+    final offer = await a.pc.createOffer(<String, dynamic>{});
     await a.pc.setLocalDescription(offer);
     await b.setRemoteDescriptionSafely(offer);
 
-    final answer = await b.pc.createAnswer(null);
+    final answer = await b.pc.createAnswer(<String, dynamic>{});
     await b.pc.setLocalDescription(answer);
     await a.setRemoteDescriptionSafely(answer);
   }
@@ -87,10 +88,7 @@ class LoopbackRtcSession {
       } else {
         await mirror?.close();
         await probe?.close();
-        for (final track in media?.getTracks() ?? <MediaStreamTrack>[]) {
-          await track.stop();
-        }
-        await media?.dispose();
+        await releaseMedia(media);
       }
       rethrow;
     }
@@ -103,12 +101,12 @@ class LoopbackRtcSession {
   Future<void> _setup() async {
     _checkOpen();
     if (_media != null) {
-      for (final track in _media!.getTracks()) {
+      for (final track in _media.getTracks()) {
         // Same captured tracks on both peers → real bidirectional RTP with
         // outbound and inbound statistics on the probe side.
-        await _probe.pc.addTrack(track, _media!);
+        await _probe.pc.addTrack(track, _media);
         _checkOpen();
-        await _mirror.pc.addTrack(track, _media!);
+        await _mirror.pc.addTrack(track, _media);
         _checkOpen();
       }
     }
@@ -156,7 +154,7 @@ class LoopbackRtcSession {
   void ping() {
     final channel = _channel;
     if (channel == null ||
-        channel.readyState != RTCDataChannelState.RTCDataChannelStateOpen) {
+        channel.state != RTCDataChannelState.RTCDataChannelOpen) {
       return;
     }
     if (_closed) return;
@@ -222,12 +220,7 @@ class LoopbackRtcSession {
     try {
       await _channel?.close();
     } catch (_) {}
-    try {
-      for (final track in _media?.getTracks() ?? <MediaStreamTrack>[]) {
-        await track.stop();
-      }
-      await _media?.dispose();
-    } catch (_) {}
+    await releaseMedia(_media);
     if (!_mirrorGone) await _mirror.close();
     await _probe.close();
     await _appRttController.close();

@@ -4,6 +4,8 @@ No signaling server, STUN/TURN, analytics, credentials or cloud endpoint is conf
 
 RTCProbe stores only bounded diagnostic metadata in memory: normalized counters, levels, findings, timestamps and state events. No SDP, candidate addresses, raw reports, audio/video content, SSID or device identifier is logged by application code. Native failures use sanitized messages, avoiding accidental protocol data in logs. Plugin/OS diagnostic logging may differ by platform and should be reviewed during a release audit.
 
-Camera/microphone are requested on Start, with audio-only/data-channel fallback. End/background releases capture and peers. Summary/history clear on the next Start or process exit. There is no export, persistence or third-party telemetry. Dependencies retain the established lockfile versions; no new packages were introduced during completion.
+Camera/microphone are requested on Start, with audio-only/data-channel fallback. End/background releases capture and peers. Summary/history clear on the next Start or process exit. There is no export, persistence or third-party telemetry. Dependencies retain the established lockfile versions; no new production packages were introduced; the Flutter SDK integration_test tooling was added for native verification.
 
 This is a source review, not a packet-capture audit. Confirm transport behavior with device inspection before making distribution-level privacy guarantees.
+
+The test driver can deliberately export dashboard screenshots containing only diagnostic metadata. These development artifacts are not an application media-persistence feature.

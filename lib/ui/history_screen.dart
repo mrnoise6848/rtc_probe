@@ -14,8 +14,9 @@ class HistoryScreen extends StatelessWidget {
         final points = controller.historyPoints.reversed.toList(
           growable: false,
         );
-        if (points.isEmpty)
+        if (points.isEmpty) {
           return const Center(child: Text('No samples collected yet.'));
+        }
         String show(String value) => value == '—' ? 'Not available' : value;
         return ListView.builder(
           itemCount: points.length,

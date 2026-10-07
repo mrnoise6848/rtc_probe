@@ -14,3 +14,6 @@ Completed before test/build execution:
 - Updated widget and measurement regression tests prepared but not run before this phase.
 
 Remaining evidence boundaries: real Android/iOS capture/ICE, encoder-cap behavior, recovery timing, performance measurements and demo recording require device validation. Automated checks follow this phase's commit and are recorded in verification.md.
+
+
+Final verification fixes include installed API compatibility for Swift/Dart, explicit optional transport-only capture mode, reliable per-track teardown, app-local active display management and accessible quality colors. SDK-only device test infrastructure was added after phase 26; production dependency versions were retained.
