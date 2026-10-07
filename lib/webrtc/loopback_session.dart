@@ -82,7 +82,7 @@ class LoopbackRtcSession {
       }
     }
 
-    _channel = await _probe.pc.createDataChannel('probe-ctl');
+    _channel = await _probe.pc.createDataChannel('probe-ctl', RTCDataChannelInit());
     _channel!.onMessage = (message) {
       if (!message.isBinary && message.text.startsWith('ping ')) {
         final parts = message.text.split(' ');
@@ -124,7 +124,7 @@ class LoopbackRtcSession {
   Future<List<StatsReport>> collectStats() => _probe.pc.getStats();
 
   /// Enables/disables all local video tracks (track.enabled=false stops
-  /// sending frames — a real encoder-side stall, not a fake metric).
+  /// sending frames — a real media pause, not a fake metric).
   void setVideoEnabled(bool enabled) {
     _media?.getTracks().where((t) => t.kind == 'video').forEach((t) => t.enabled = enabled);
   }
@@ -133,14 +133,12 @@ class LoopbackRtcSession {
   /// Returns false when the platform rejected the parameters.
   Future<bool> applyMaxVideoBitrate(int? bitsPerSecond) async {
     var applied = false;
-    for (final sender in _probe.pc.senders) {
+    for (final sender in await _probe.pc.getSenders()) {
       if (sender.track?.kind != 'video') continue;
       try {
         final params = sender.parameters;
         final encodings = params.encodings;
-        if (encodings.isEmpty) {
-          encodings.add(RTCRtpEncoding());
-        }
+        if (encodings == null || encodings.isEmpty) continue;
         for (final encoding in encodings) {
           encoding.maxBitrate = bitsPerSecond;
         }

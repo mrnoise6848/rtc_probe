@@ -3,6 +3,7 @@ import 'package:rtc_probe/rtc/models.dart';
 import 'package:rtc_probe/ui/format.dart';
 import 'package:rtc_probe/ui/details_screen.dart';
 import 'package:rtc_probe/ui/events_screen.dart';
+import 'package:rtc_probe/ui/failure_controls.dart';
 import 'package:rtc_probe/ui/session_controller.dart';
 import 'package:rtc_probe/ui/sparkline.dart';
 
@@ -142,6 +143,7 @@ class _LiveView extends StatelessWidget {
         _TimelineCard(controller: controller),
         const SizedBox(height: 12),
         _FindingsCard(controller: controller),
+        FailureControls(controller: controller),
       ],
     );
   }

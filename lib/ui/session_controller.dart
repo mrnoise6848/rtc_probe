@@ -311,7 +311,7 @@ class SessionController extends ChangeNotifier {
     session.setVideoEnabled(enabled);
     _videoTrackEnabled = enabled;
     _log(RtcSessionEventKind.degradationApplied,
-        enabled ? 'Video track resumed' : 'Video track paused (real encoder stall)');
+        enabled ? 'Video track resumed' : 'Video track paused (platform may send black frames)');
     notifyListeners();
   }
 
@@ -319,7 +319,7 @@ class SessionController extends ChangeNotifier {
     final session = _session;
     if (session == null) return false;
     final ok = await session.applyMaxVideoBitrate(kbps == null ? null : kbps * 1000);
-    _appliedBitrateCapKbps = ok ? kbps : null;
+    if (ok) _appliedBitrateCapKbps = kbps;
     _log(
       RtcSessionEventKind.degradationApplied,
       ok
