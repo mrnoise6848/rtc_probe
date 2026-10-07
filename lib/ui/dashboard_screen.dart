@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rtc_probe/rtc/models.dart';
 import 'package:rtc_probe/ui/format.dart';
+import 'package:rtc_probe/ui/details_screen.dart';
 import 'package:rtc_probe/ui/session_controller.dart';
 import 'package:rtc_probe/ui/sparkline.dart';
 
@@ -45,6 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           appBar: AppBar(
             title: const Text('RTCProbe'),
             actions: [
+              IconButton(tooltip: 'Detailed metrics', icon: const Icon(Icons.analytics_outlined), onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DetailsScreen(controller: _controller)))),
               _NetworkChip(controller: _controller),
               const SizedBox(width: 8),
             ],
